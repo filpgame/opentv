@@ -34,6 +34,13 @@ class SearchTextTest {
     }
 
     @Test
+    fun `invisible formatting characters inside a word are dropped, not split on`() {
+        assertThat(SearchText.normalize("O Pistoleir\u202Ao\u202C")).isEqualTo("o pistoleiro")
+        assertThat(SearchText.normalize("Peni\u00ADnsula Iberica")).isEqualTo("peninsula iberica")
+        assertThat(SearchText.normalize("\u200EFilme")).isEqualTo("filme")
+    }
+
+    @Test
     fun `letters NFD keeps whole are spelled out, superscripts folded`() {
         assertThat(SearchText.normalize("Straße")).isEqualTo("strasse")
         assertThat(SearchText.normalize("Ærø")).isEqualTo("aero")

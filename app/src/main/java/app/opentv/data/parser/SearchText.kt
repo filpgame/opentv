@@ -28,6 +28,12 @@ object SearchText {
     private val APOSTROPHES = setOf('\'', '’', '‘', '`', '´')
 
     /**
+     * Invisible formatting characters (soft hyphen, direction marks and embeddings) are dropped too.
+     * Real playlists carry them inside words: `O Pistoleir\u202Ao\u202C` must still be "pistoleiro".
+     */
+    private val FORMAT = Character.FORMAT.toInt()
+
+    /**
      * Lowercase letters and digits with accents removed, every other run of characters collapsed to
      * one space: `Velozes & Furiosos 10 4K [Hybrid]` → `velozes furiosos 10 4k hybrid`.
      */
@@ -38,6 +44,7 @@ object SearchText {
         for (c in decomposed) {
             when {
                 Character.getType(c) == Character.NON_SPACING_MARK.toInt() -> Unit
+                Character.getType(c) == FORMAT -> Unit
                 c in APOSTROPHES -> Unit
                 c.isLetterOrDigit() -> {
                     if (gap && out.isNotEmpty()) out.append(' ')
