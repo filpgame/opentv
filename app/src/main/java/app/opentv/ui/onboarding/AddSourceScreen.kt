@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.opentv.R
+import app.opentv.core.DensityUtils
 import app.opentv.data.model.Source
 import app.opentv.data.model.SourceKind
 import app.opentv.isRunningOnTelevision
@@ -68,15 +69,18 @@ fun AddSourceScreen(
     editingSourceId: Long? = null,
 ) {
     val context = LocalContext.current
-    // The QR "set it up from your phone" flow only makes sense on a TV — it serves a setup page
-    // FROM this device for a phone to fill in. On a phone that same screen shows a QR meant to be
-    // scanned BY a phone, which is nonsensical and traps the user — so a non-TV device defaults
-    // straight to the direct entry form. On a TV the QR is still offered first, because typing a
-    // server address and password with a d-pad is the worst moment in every app of this kind.
-    val isTelevision = remember(context) { isRunningOnTelevision(context) }
+    // The QR "set it up from your phone" flow serves a setup page FROM this device for ANOTHER
+    // device to fill in. On a phone or tablet that screen would show a QR meant to be scanned by
+    // the very device displaying it, which is nonsensical and traps the user — so those default
+    // straight to the direct entry form. A TV and a car head unit are the opposite case: typing a
+    // server address and password with a d-pad or a dashboard keyboard is the worst moment in
+    // every app of this kind, and the user's phone is right there. So both get the QR first.
+    val canPairFromPhone = remember(context) {
+        isRunningOnTelevision(context) || DensityUtils.isAutomotive(context)
+    }
     // Editing an existing provider always uses the direct form (the fields are pre-filled, and there
-    // is nothing to pair); only a fresh add on a TV offers the phone-pairing QR first.
-    var usePhone by remember { mutableStateOf(isTelevision && editingSourceId == null) }
+    // is nothing to pair); only a fresh add on such a device offers the phone-pairing QR first.
+    var usePhone by remember { mutableStateOf(canPairFromPhone && editingSourceId == null) }
 
     if (usePhone) {
         PhonePairingScreen(
@@ -318,9 +322,10 @@ fun AddSourceScreen(
                 }
             }
 
-            // "Set up from your phone" (the QR pairing flow) is offered only on a TV — see the
-            // isTelevision note above. On a phone it would just show a QR to nowhere.
-            if (isTelevision) {
+            // "Set up from your phone" (the QR pairing flow) is offered only where a phone is the
+            // other device — see the canPairFromPhone note above. On a phone it would just show a
+            // QR to nowhere.
+            if (canPairFromPhone) {
                 Spacer(Modifier.height(20.dp))
                 OutlinedButton(onClick = { usePhone = true }) {
                     Text(stringResource(R.string.onboarding_use_phone))

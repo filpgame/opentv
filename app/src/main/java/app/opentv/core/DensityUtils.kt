@@ -42,7 +42,8 @@ object DensityUtils {
         return base.createConfigurationContext(config)
     }
 
-    private fun isAutomotive(context: Context): Boolean {
+    /** True on an Android Automotive head unit (or anything running in car UI mode). */
+    fun isAutomotive(context: Context): Boolean {
         val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
         if (uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_CAR) return true
         return context.packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)

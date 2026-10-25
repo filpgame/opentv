@@ -9,11 +9,8 @@ import android.content.Context
 import android.util.Log
 import app.opentv.R
 import app.opentv.data.model.Source
-import app.opentv.data.model.SourceKind
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.InetAddress
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.SecureRandom
@@ -91,7 +88,7 @@ class PairingServer(
 
     fun start() {
         if (running) return
-        val host = lanAddress()
+        val host = LanAddress.find(context)
         if (host == null) {
             _state.value = State.Failed(
                 "This device doesn't appear to be on a network, so it can't talk to your phone.",
@@ -250,29 +247,28 @@ class PairingServer(
             return
         }
 
-        val kind = if (form["kind"] == "m3u") SourceKind.M3U else SourceKind.XTREAM
-        val url = form["url"].orEmpty().trim()
-        if (url.isEmpty()) {
-            output.write(
-                PairingHttp.httpResponse(
-                    "200 OK",
-                    "text/html",
-                    PairingPage.form(token, text.get(R.string.pairpage_err_url), text),
-                ),
+        // The default name is shown on this device, so it comes from this device's language, not
+        // from the phone's [text].
+        val draft = when (
+            val result = PairingHttp.sourceFromForm(
+                form,
+                providerName = context.getString(R.string.onboarding_default_provider_name),
+                playlistName = context.getString(R.string.onboarding_default_playlist_name),
             )
-            return
+        ) {
+            is PairingHttp.FormResult.Ok -> result.source
+            else -> {
+                val error = if (result is PairingHttp.FormResult.MissingMac) {
+                    text.get(R.string.webpage_mac_required)
+                } else {
+                    text.get(R.string.pairpage_err_url)
+                }
+                output.write(
+                    PairingHttp.httpResponse("200 OK", "text/html", PairingPage.form(token, error, text)),
+                )
+                return
+            }
         }
-
-        val draft = Source(
-            name = form["name"].orEmpty().trim().ifBlank {
-                if (kind == SourceKind.XTREAM) "My provider" else "My playlist"
-            },
-            kind = kind,
-            url = url,
-            username = form["username"]?.trim()?.takeIf { it.isNotEmpty() },
-            password = form["password"]?.takeIf { it.isNotEmpty() },
-            epgUrl = form["epg"]?.trim()?.takeIf { it.isNotEmpty() },
-        )
 
         output.write(
             PairingHttp.httpResponse(
@@ -294,36 +290,6 @@ class PairingServer(
         runCatching { serverSocket?.close() }
         serverSocket = null
         token = ""
-    }
-
-    // ---- Finding our own address -----------------------------------------------------------
-
-    /**
-     * The device's address on the LAN.
-     *
-     * Enumerating interfaces rather than asking ConnectivityManager, because TV boxes are
-     * frequently on ethernet, sometimes on both, and the wifi-shaped API returns nothing
-     * useful when the box is wired.
-     */
-    private fun lanAddress(): String? {
-        val candidates = mutableListOf<InetAddress>()
-        runCatching {
-            for (nic in NetworkInterface.getNetworkInterfaces()) {
-                if (!nic.isUp || nic.isLoopback) continue
-                for (address in nic.inetAddresses) {
-                    if (address.isLoopbackAddress) continue
-                    if (address.hostAddress?.contains(':') == true) continue // IPv4 only
-                    if (PairingHttp.isPrivateAddress(address.hostAddress)) candidates += address
-                }
-            }
-        }.onFailure { Log.w(TAG, "Could not enumerate interfaces", it) }
-
-        // Prefer a real private range over a 169.254 self-assigned address, which means
-        // DHCP failed and nothing will be able to reach us anyway.
-        return candidates
-            .sortedBy { it.hostAddress?.startsWith("169.254") == true }
-            .firstOrNull()
-            ?.hostAddress
     }
 
     private companion object {

@@ -20,8 +20,6 @@ import app.opentv.sync.SmbConfig
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStream
-import java.net.InetAddress
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.SecureRandom
@@ -100,7 +98,7 @@ class ManagerServer(
 
     fun start() {
         if (running) return
-        val host = lanAddress()
+        val host = LanAddress.find(context)
         if (host == null) {
             _state.value = State.Failed(
                 "This device doesn't appear to be on a network, so a phone or laptop can't reach it.",
@@ -453,37 +451,6 @@ class ManagerServer(
         logo = logoUrl,
         number = number,
     )
-
-    // ---- Finding our own address ---------------------------------------------------------------
-
-    /**
-     * The device's address on the LAN.
-     *
-     * Deliberately the same enumeration as [PairingServer.lanAddress] and [app.opentv.sync.SyncServer]
-     * (duplicated, not shared, to keep the servers independent): asks the interfaces rather than
-     * ConnectivityManager, because TV boxes are frequently on ethernet and the wifi-shaped API
-     * returns nothing useful when the box is wired.
-     */
-    private fun lanAddress(): String? {
-        val candidates = mutableListOf<InetAddress>()
-        runCatching {
-            for (nic in NetworkInterface.getNetworkInterfaces()) {
-                if (!nic.isUp || nic.isLoopback) continue
-                for (address in nic.inetAddresses) {
-                    if (address.isLoopbackAddress) continue
-                    if (address.hostAddress?.contains(':') == true) continue // IPv4 only
-                    if (PairingHttp.isPrivateAddress(address.hostAddress)) candidates += address
-                }
-            }
-        }.onFailure { Log.w(TAG, "Could not enumerate interfaces", it) }
-
-        // Prefer a real private range over a 169.254 self-assigned address, which means DHCP
-        // failed and nothing will be able to reach us anyway.
-        return candidates
-            .sortedBy { it.hostAddress?.startsWith("169.254") == true }
-            .firstOrNull()
-            ?.hostAddress
-    }
 
     private companion object {
         const val TAG = "ManagerServer"

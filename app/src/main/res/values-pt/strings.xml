@@ -300,7 +300,7 @@
     <string name="pairing_got_it">Recebido — conectando ao seu provedor…</string>
     <string name="pairing_qr_desc">QR code com o link da página de configuração neste dispositivo</string>
     <string name="pairing_setup_title">Configure pelo celular</string>
-    <string name="pairing_setup_desc">Aponte a câmera do celular para o código. Ele abre uma página servida por esta televisão — nada do que você digita sai da sua rede doméstica.</string>
+    <string name="pairing_setup_desc">Aponte a câmera do celular para o código. Ele abre uma página servida por este aparelho — nada do que você digita sai da sua rede.</string>
     <string name="pairing_enter_code">Depois digite este código no celular</string>
     <string name="pairing_camera_fail">A câmera não consegue ler? Abra isto em qualquer navegador no celular:</string>
     <string name="pairing_type_on_tv">Digitar na TV</string>
@@ -442,19 +442,19 @@
     <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
     <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
     <string name="pairpage_title">Configurar o OpenTV</string>
-    <string name="pairpage_sub">Preencher por aqui é bem mais fácil do que usar o controle remoto.</string>
+    <string name="pairpage_sub">Preencher por aqui é bem mais fácil do que digitar na tela.</string>
     <string name="pairpage_kind_xtream">Login Xtream</string>
     <string name="pairpage_kind_m3u">Playlist M3U</string>
     <string name="pairpage_name_placeholder">Provedor da sala</string>
     <string name="pairpage_url_hint">Cole a linha inteira do seu provedor se for mais fácil — o que sobrar é removido.</string>
-    <string name="pairpage_field_code">Código exibido na TV</string>
-    <string name="pairpage_code_hint">É isso que comprova que é você mesmo na frente da TV.</string>
-    <string name="pairpage_send">Enviar para a TV</string>
-    <string name="pairpage_privacy">Esta página é servida pela sua televisão, pela sua própria rede. O que você digita vai direto para ela e para mais lugar nenhum — não existe conta do OpenTV nem servidor do OpenTV.</string>
-    <string name="pairpage_err_code">Esse código não confere com o da TV. Tentativas restantes: %1$d.</string>
+    <string name="pairpage_field_code">Código exibido na tela</string>
+    <string name="pairpage_code_hint">É isso que comprova que é você mesmo na frente da tela.</string>
+    <string name="pairpage_send">Enviar para a tela</string>
+    <string name="pairpage_privacy">Esta página é servida pelo aparelho que você está configurando, pela sua própria rede. O que você digita vai direto para ele e para mais lugar nenhum — não existe conta do OpenTV nem servidor do OpenTV.</string>
+    <string name="pairpage_err_code">Esse código não confere com o da tela. Tentativas restantes: %1$d.</string>
     <string name="pairpage_err_url">Informe o endereço do servidor.</string>
     <string name="pairpage_too_many_title">Tentativas demais</string>
-    <string name="pairpage_too_many_body">Inicie o pareamento de novo na TV para receber um novo código.</string>
-    <string name="pairpage_sent_title">Enviado para a sua TV</string>
-    <string name="pairpage_sent_body">Pode largar o celular — o resto acontece na TV.</string>
+    <string name="pairpage_too_many_body">Inicie o pareamento de novo no aparelho para receber um novo código.</string>
+    <string name="pairpage_sent_title">Enviado para o seu aparelho</string>
+    <string name="pairpage_sent_body">Pode largar o celular — o resto acontece na tela.</string>
 </resources>

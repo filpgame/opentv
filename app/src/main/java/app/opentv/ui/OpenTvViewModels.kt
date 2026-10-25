@@ -1122,7 +1122,7 @@ class ProfilesViewModel(app: Application) : AndroidViewModel(app) {
  */
 class SyncViewModel(app: Application) : AndroidViewModel(app) {
     private val graph = ServiceLocator.get(app)
-    private val server = SyncServer(viewModelScope)
+    private val server = SyncServer(viewModelScope, app)
     private val client = SyncClient(graph.httpClient)
 
     val serverState: StateFlow<SyncServer.State> = server.state
