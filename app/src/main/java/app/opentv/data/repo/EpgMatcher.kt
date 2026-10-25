@@ -32,10 +32,34 @@ object EpgMatcher {
         val key: String,
     )
 
+    /**
+     * The prefix tier is indexed rather than scanned. A linear pass over every alias per channel
+     * is fine for a 5,000-channel playlist, but an M3U that lists its whole VOD library as
+     * channels (300,000+ entries) against a 7,000-channel guide is billions of `startsWith`
+     * calls — minutes of pegged CPU on a car head unit, on every launch.
+     */
     class Index internal constructor(
         private val exact: Map<String, String>,
-        private val sortedKeys: List<Alias>,
+        /** Keys shared by two different guide channels; a prefix hit on one is ambiguous. */
+        private val ambiguous: Set<String>,
+        aliases: List<Alias>,
     ) {
+        private val keys: Array<String>
+        private val ids: Array<String>
+
+        /** `runEnd[i]` is the first index after `i` whose epg id differs from `ids[i]`. */
+        private val runEnd: IntArray
+
+        init {
+            val sorted = aliases.filter { it.key.length >= MIN_KEY_LENGTH }.sortedBy { it.key }
+            keys = Array(sorted.size) { sorted[it].key }
+            ids = Array(sorted.size) { sorted[it].epgId }
+            runEnd = IntArray(sorted.size)
+            for (i in sorted.indices.reversed()) {
+                runEnd[i] = if (i + 1 < ids.size && ids[i + 1] == ids[i]) runEnd[i + 1] else i + 1
+            }
+        }
+
         /** Returns the epg id for a provider channel's group key, or null. */
         fun match(groupKey: String): String? {
             if (groupKey.length < MIN_KEY_LENGTH) return null
@@ -46,17 +70,46 @@ object EpgMatcher {
             // ("skysportsmainevent" vs "skysportsmainevt"; "bbcone" vs "bbconelondon").
             // Only accepted when every candidate agrees on a single epg id.
             var found: String? = null
-            for (alias in sortedKeys) {
-                val hit = (alias.key.length >= MIN_KEY_LENGTH) &&
-                    (alias.key.startsWith(groupKey) || groupKey.startsWith(alias.key))
-                if (!hit) continue
-                if (found == null) {
-                    found = alias.epgId
-                } else if (found != alias.epgId) {
-                    return null // ambiguous — refuse to guess
-                }
+
+            // Guide keys that extend the provider's sit in one contiguous run of the sorted keys.
+            val from = firstIndexNotBelow(groupKey)
+            val to = endOfPrefixRun(groupKey, from)
+            if (from < to) {
+                if (runEnd[from] < to) return null // ambiguous — refuse to guess
+                found = ids[from]
+            }
+
+            // Guide keys the provider's extends: a hash lookup per shorter prefix. The full
+            // length is the run above (a key equal to the group key extends it trivially).
+            for (end in MIN_KEY_LENGTH until groupKey.length) {
+                val prefix = groupKey.substring(0, end)
+                if (prefix in ambiguous) return null
+                val id = exact[prefix] ?: continue
+                if (found != null && found != id) return null
+                found = id
             }
             return found
+        }
+
+        private fun firstIndexNotBelow(key: String): Int {
+            var lo = 0
+            var hi = keys.size
+            while (lo < hi) {
+                val mid = (lo + hi) ushr 1
+                if (keys[mid] < key) lo = mid + 1 else hi = mid
+            }
+            return lo
+        }
+
+        /** Keys from [from] that start with [prefix] are a contiguous run; returns its end. */
+        private fun endOfPrefixRun(prefix: String, from: Int): Int {
+            var lo = from
+            var hi = keys.size
+            while (lo < hi) {
+                val mid = (lo + hi) ushr 1
+                if (keys[mid].startsWith(prefix)) lo = mid + 1 else hi = mid
+            }
+            return lo
         }
     }
 
@@ -90,7 +143,7 @@ object EpgMatcher {
         }
         ambiguous.forEach(exact::remove)
 
-        return Index(exact, all)
+        return Index(exact, ambiguous, all)
     }
 
     /**

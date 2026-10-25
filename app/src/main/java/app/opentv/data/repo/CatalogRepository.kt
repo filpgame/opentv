@@ -5,6 +5,7 @@
  */
 package app.opentv.data.repo
 
+import android.database.sqlite.SQLiteException
 import android.util.Log
 import app.opentv.core.AppSettings
 import app.opentv.data.db.CategoryDao
@@ -32,7 +33,9 @@ import app.opentv.data.remote.XtreamApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -145,10 +148,10 @@ class CatalogRepository(
     }
 
     fun observeChannels(sourceId: Long? = null, categoryId: String? = null): Flow<List<Channel>> =
-        channelDao.observe(sourceId, categoryId)
+        channelDao.observe(sourceId, categoryId).retryIfTableShrank()
 
     fun observeChannelsIn(categoryIds: List<String>): Flow<List<Channel>> =
-        channelDao.observeInCategories(categoryIds)
+        channelDao.observeInCategories(categoryIds).retryIfTableShrank()
 
     /**
      * Channels in a set of categories INCLUDING hidden ones, optionally scoped to one source — the
@@ -156,9 +159,9 @@ class CatalogRepository(
      * for the guide) because the manager must show hidden channels so they can be un-hidden.
      */
     fun observeChannelsInIncludingHidden(sourceId: Long?, categoryIds: List<String>): Flow<List<Channel>> =
-        channelDao.observeInCategoriesIncludingHidden(sourceId, categoryIds)
+        channelDao.observeInCategoriesIncludingHidden(sourceId, categoryIds).retryIfTableShrank()
 
-    fun observeFavouriteChannels(): Flow<List<Channel>> = channelDao.observeFavourites()
+    fun observeFavouriteChannels(): Flow<List<Channel>> = channelDao.observeFavourites().retryIfTableShrank()
 
     /** Reactive number of visible channels on disk — the UI uses this to tell "guide still
      * building" (channels exist) apart from "nothing loaded" (a failed or empty sync). */
@@ -166,9 +169,24 @@ class CatalogRepository(
 
     fun observeCategories(kind: StreamKind): Flow<List<Category>> = categoryDao.observe(kind)
 
-    fun observeMovies(categoryId: String? = null): Flow<List<Movie>> = movieDao.observe(categoryId)
+    fun observeMovies(categoryId: String? = null): Flow<List<Movie>> =
+        movieDao.observe(categoryId).retryIfTableShrank()
 
-    fun observeSeries(categoryId: String? = null): Flow<List<Series>> = seriesDao.observe(categoryId)
+    fun observeSeries(categoryId: String? = null): Flow<List<Series>> =
+        seriesDao.observe(categoryId).retryIfTableShrank()
+
+    /**
+     * Android fills a cursor one 2 MB window at a time and re-runs the query for every window,
+     * outside any transaction. A long list read while a catalogue refresh deletes rows can find
+     * the table shorter than the window it asks for — `SQLiteBlobTooBigException: Row too big to
+     * fit into CursorWindow` — which crashed the guide when an upgrade moved a playlist's VOD out
+     * of the channel table. Reading again sees the table as the refresh left it.
+     */
+    private fun <T> Flow<T>.retryIfTableShrank(): Flow<T> = retryWhen { cause, attempt ->
+        val retry = cause is SQLiteException && attempt < 3
+        if (retry) Log.w(TAG, "Catalogue changed under a list read, reading it again: ${cause.message}")
+        retry
+    }
 
     fun observeEpisodes(sourceId: Long, seriesId: String): Flow<List<Episode>> =
         episodeDao.observeForSeries(sourceId, seriesId)
@@ -617,9 +635,12 @@ class CatalogRepository(
         // Skip fetching a content type the user has switched off — that's the whole speed-up.
         // Live is gated here (not in syncLive) so onboarding's direct syncLive still loads channels.
         // Already-synced rows are left untouched: turning a type back on and refreshing restores it.
-        val live =
-            if (settings.liveEnabled.value) syncLive(source, nowUtcMillis)
-            else SyncResult.Success(0, 0, 0)
+        val live = when {
+            settings.liveEnabled.value -> syncLive(source, nowUtcMillis)
+            // A playlist's movies and series come in the same download as its channels.
+            source.kind == SourceKind.M3U -> syncCatalogue(source, nowUtcMillis, includeLive = false)
+            else -> SyncResult.Success(0, 0, 0)
+        }
         if (live is SyncResult.Success && source.kind == SourceKind.XTREAM) {
             runCatching { syncXtreamVod(source, nowUtcMillis) }
                 .onFailure { Log.w(TAG, "VOD sync failed for source ${source.id}", it) }
@@ -627,12 +648,22 @@ class CatalogRepository(
         live
     }
 
-    /** Live channels only — the fast path so the guide can show before VOD and the guide load. */
-    suspend fun syncLive(source: Source, nowUtcMillis: Long): SyncResult = withContext(Dispatchers.IO) {
+    /**
+     * Live channels only — the fast path so the guide can show before VOD and the guide load.
+     * A playlist is the exception: it is one download, so its movies and series land here too.
+     */
+    suspend fun syncLive(source: Source, nowUtcMillis: Long): SyncResult =
+        syncCatalogue(source, nowUtcMillis, includeLive = true)
+
+    private suspend fun syncCatalogue(
+        source: Source,
+        nowUtcMillis: Long,
+        includeLive: Boolean,
+    ): SyncResult = withContext(Dispatchers.IO) {
         try {
             when (source.kind) {
                 SourceKind.XTREAM -> syncXtreamLive(source, nowUtcMillis)
-                SourceKind.M3U -> syncM3u(source, nowUtcMillis)
+                SourceKind.M3U -> syncM3u(source, nowUtcMillis, includeLive)
                 SourceKind.STALKER -> syncStalkerLive(source, nowUtcMillis)
             }
         } catch (e: CancellationException) {
@@ -733,46 +764,62 @@ class CatalogRepository(
         if (series.isNotEmpty()) seriesDao.upsertAll(series)
     }
 
-    private suspend fun syncM3u(source: Source, nowUtcMillis: Long): SyncResult {
-        val request = Request.Builder()
-            .url(source.url)
-            .header("User-Agent", source.userAgent)
-            .build()
-
-        val parsed = http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                return SyncResult.Failed("Playlist download failed (HTTP ${response.code}).", null)
+    /**
+     * Downloads the playlist and stores each kind of entry where it belongs: live channels in the
+     * guide, movies and series in their own tabs (see [M3uParser.kindOf]). Movies and series follow
+     * their content-type toggles, like an Xtream source's; live follows [includeLive].
+     */
+    private suspend fun syncM3u(source: Source, nowUtcMillis: Long, includeLive: Boolean): SyncResult {
+        // A plain Xtream `type=m3u` export carries no group-title and no art. The same panel's
+        // `m3u_plus` has both, so ask for that first and fall back to the URL exactly as given.
+        val rich = richPlaylistUrl(source.url)?.let { url ->
+            try {
+                fetchPlaylist(source, url).takeUnless { it.isEmpty }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "m3u_plus playlist failed for source ${source.id}, using the URL as given", e)
+                null
             }
-            val stream = response.body?.byteStream()
-                ?: return SyncResult.Failed("The playlist was empty.", null)
-            M3uParser.parse(stream, source.id)
         }
+        val parsed = rich ?: fetchPlaylist(source, source.url)
 
-        if (parsed.channels.isEmpty()) {
+        if (parsed.isEmpty) {
             return SyncResult.Failed(
                 "No channels found in that playlist. Check the URL points at an M3U file.",
                 null,
             )
         }
+        Log.i(
+            TAG,
+            "Playlist for source ${source.id}${if (rich != null) " (m3u_plus)" else ""}: " +
+                "${parsed.channels.size} channels, ${parsed.movies.size} movies, " +
+                "${parsed.series.size} series (${parsed.episodes.size} episodes), " +
+                "${parsed.categories.size} categories",
+        )
 
-        // Synthesise categories from group-title so the UI has something to group by.
-        val categories = parsed.channels
-            .mapNotNull { it.categoryId }
-            .distinct()
-            .sorted()
-            .mapIndexed { index, name ->
-                Category(
-                    id = name,
-                    sourceId = source.id,
-                    name = name,
-                    kind = StreamKind.LIVE,
-                    sortIndex = index,
-                )
+        fun categoriesOf(kind: StreamKind) = parsed.categories.filter { it.kind == kind }
+
+        if (includeLive) {
+            val liveCategories = categoriesOf(StreamKind.LIVE)
+            categoryDao.replaceForSource(source.id, StreamKind.LIVE, liveCategories)
+            if (parsed.channels.isEmpty()) {
+                // A VOD-only playlist. It downloaded fine, so its old channels really are gone.
+                channelDao.deleteForSource(source.id)
+            } else {
+                val categoryNames = liveCategories.associate { it.id to it.name }
+                channelDao.replaceCatalogue(source.id, normalized(parsed.channels, categoryNames), nowUtcMillis)
             }
-
-        categoryDao.upsertAll(categories)
-        val categoryNames = categories.associate { it.id to it.name }
-        channelDao.replaceCatalogue(source.id, normalized(parsed.channels, categoryNames), nowUtcMillis)
+        }
+        if (settings.moviesEnabled.value) {
+            categoryDao.replaceForSource(source.id, StreamKind.MOVIE, categoriesOf(StreamKind.MOVIE))
+            movieDao.replaceForSource(source.id, parsed.movies)
+        }
+        if (settings.seriesEnabled.value) {
+            categoryDao.replaceForSource(source.id, StreamKind.SERIES, categoriesOf(StreamKind.SERIES))
+            seriesDao.replaceForSource(source.id, parsed.series)
+            episodeDao.replaceForSource(source.id, parsed.episodes)
+        }
 
         // If the playlist declared its own guide URL and the user did not set one, adopt it.
         if (source.epgUrl.isNullOrBlank() && !parsed.declaredEpgUrl.isNullOrBlank()) {
@@ -780,7 +827,23 @@ class CatalogRepository(
         }
 
         sourceDao.markCatalogSynced(source.id, nowUtcMillis)
-        return SyncResult.Success(parsed.channels.size, 0, 0)
+        return SyncResult.Success(parsed.channels.size, parsed.movies.size, parsed.series.size)
+    }
+
+    /** Downloads and parses one playlist. HTTP failures throw, with a message fit for the user. */
+    private fun fetchPlaylist(source: Source, url: String): M3uParser.Result {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", source.userAgent)
+            .build()
+        return http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw java.io.IOException("Playlist download failed (HTTP ${response.code}).")
+            }
+            val stream = response.body?.byteStream()
+                ?: throw java.io.IOException("The playlist was empty.")
+            M3uParser.parse(stream, source.id)
+        }
     }
 
     /**
@@ -941,5 +1004,24 @@ class CatalogRepository(
          * and runs [renormalizeAll] once when it moves.
          */
         const val NORMALIZER_VERSION = 2
+
+        /**
+         * Bump this whenever playlist import changes what lands where (live / movies / series), so
+         * playlists already on disk get re-downloaded once on the next launch instead of waiting
+         * for the 6-hour sync.
+         */
+        const val PLAYLIST_LAYOUT_VERSION = 1
+
+        /**
+         * The `m3u_plus` form of an Xtream panel's `get.php?…&type=m3u` export — the same list with
+         * group-title, logos and tvg-ids added. Null for any other playlist URL, including one that
+         * already asks for `m3u_plus`.
+         */
+        fun richPlaylistUrl(url: String): String? {
+            val parsed = url.toHttpUrlOrNull() ?: return null
+            if (!parsed.encodedPath.endsWith("/get.php")) return null
+            if (!parsed.queryParameter("type").equals("m3u", ignoreCase = true)) return null
+            return parsed.newBuilder().setQueryParameter("type", "m3u_plus").build().toString()
+        }
     }
 }

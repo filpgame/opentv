@@ -101,4 +101,61 @@ class EpgMatcherTest {
         assertThat(idx.match(keyOf("UK| CHANNEL 4 hevc"))).isEqualTo("channel4.uk")
         assertThat(idx.match(keyOf("UK| SKY ATLANTIC ᴴᴰ"))).isEqualTo("skyatlantic.uk")
     }
+
+    @Test
+    fun `a shorter and a longer guide key that disagree are ambiguous`() {
+        val idx = index(
+            "skysports.uk" to "Sky Sports",
+            "skysportsnews.uk" to "Sky Sports News",
+        )
+
+        // The provider name extends one guide key and is extended by the other.
+        assertThat(idx.match("skysportsne")).isNull()
+        assertThat(idx.match("skysportsnews")).isEqualTo("skysportsnews.uk")
+    }
+
+    @Test
+    fun `indexed prefix tier agrees with a linear scan over every alias`() {
+        // Small alphabet, so keys constantly prefix one another and collide.
+        val random = java.util.Random(42)
+        fun randomKey(maxLength: Int) =
+            (0 until random.nextInt(maxLength + 1)).map { "abc"[random.nextInt(3)] }.joinToString("")
+
+        repeat(20) {
+            val aliases = (0 until 150).map { "id${random.nextInt(60)}" to randomKey(7) }
+            val idx = EpgMatcher.buildIndex(aliases)
+            val queries = (0 until 2_000).map { randomKey(8) } +
+                aliases.flatMap { (_, name) -> name.indices.map { name.substring(0, it + 1) } }
+
+            for (query in queries) {
+                assertThat(idx.match(query)).isEqualTo(linearScan(aliases, query))
+            }
+        }
+    }
+
+    /** The matcher as it was before the prefix tier was indexed: the reference behaviour. */
+    private fun linearScan(aliases: List<Pair<String, String>>, groupKey: String): String? {
+        if (groupKey.length < 2) return null
+        val exact = HashMap<String, String>()
+        val ambiguous = HashSet<String>()
+        val all = ArrayList<Pair<String, String>>()
+        for ((epgId, name) in aliases) {
+            for (candidate in listOf(name, epgId)) {
+                val key = ChannelNameNormalizer.normalize(candidate).groupKey
+                if (key.length < 2) continue
+                all += epgId to key
+                val existing = exact.putIfAbsent(key, epgId)
+                if (existing != null && existing != epgId) ambiguous += key
+            }
+        }
+        ambiguous.forEach(exact::remove)
+
+        exact[groupKey]?.let { return it }
+        var found: String? = null
+        for ((epgId, key) in all) {
+            if (!(key.startsWith(groupKey) || groupKey.startsWith(key))) continue
+            if (found == null) found = epgId else if (found != epgId) return null
+        }
+        return found
+    }
 }
