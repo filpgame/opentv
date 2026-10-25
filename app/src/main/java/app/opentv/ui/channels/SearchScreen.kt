@@ -14,20 +14,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -61,11 +68,12 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Channel search with an on-screen keyboard.
+ * Search across channels, movies and shows, results updating live as you type.
  *
- * Android TV's default text field punts to "type on your phone", which is useless if your phone
- * isn't to hand. This screen draws its own d-pad keyboard so search works with the remote alone,
- * and shows matching channels live as you type.
+ * Typing goes through a plain text field and the system keyboard rather than our own d-pad grid
+ * ([OnScreenKeyboard], still used by the profile and channel-manager screens): the system IME
+ * brings voice input, hardware keyboards and the user's own layout, which the grid never could.
+ * The results get the whole width below the field, not a column squeezed in beside a keyboard.
  */
 @Composable
 fun SearchScreen(
@@ -82,68 +90,82 @@ fun SearchScreen(
     val seriesResults by vodViewModel.seriesResults.collectAsState()
     val anyResults = channelResults.isNotEmpty() || movieResults.isNotEmpty() || seriesResults.isNotEmpty()
 
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val fieldFocus = remember { FocusRequester() }
+
     LaunchedEffect(query) {
         viewModel.setSearchQuery(query)
         vodViewModel.setVodSearchQuery(query)
     }
+    // Land in the field with the keyboard already up; on a TV the user would otherwise have to
+    // press OK on an unfocused field before they could type anything.
+    LaunchedEffect(Unit) {
+        runCatching { fieldFocus.requestFocus() }
+        keyboard?.show()
+    }
     BackHandler { onBack() }
 
+    // The app is edge-to-edge, so the window does not resize for the keyboard on its own: safeDrawing
+    // makes the IME shrink the list instead of covering the lower results, and keeps the header
+    // clear of a car head unit's status bar, which otherwise sits on the "Done" button.
     Column(
         Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 28.dp, vertical = 20.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.nav_search), style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.width(20.dp))
-            Text(
-                query.ifEmpty { stringResource(R.string.search_type_name) },
-                style = MaterialTheme.typography.titleLarge,
-                color = if (query.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.primary,
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it.take(MAX_QUERY_LENGTH) },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.search_type_name)) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                // The IME's own search key means "done typing": drop the keyboard and step into
+                // the results so the d-pad can pick one straight away.
+                keyboardActions = KeyboardActions(onSearch = {
+                    keyboard?.hide()
+                    focusManager.moveFocus(FocusDirection.Down)
+                }),
+                modifier = Modifier.weight(1f).focusRequester(fieldFocus),
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(20.dp))
             OutlinedButton(onClick = onBack) { Text(stringResource(R.string.common_done)) }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        Row(Modifier.fillMaxSize()) {
-            OnScreenKeyboard(
-                onKey = { if (query.length < 40) query += it },
-                onSpace = { if (query.length < 40) query += " " },
-                onBackspace = { query = query.dropLast(1) },
-                onClear = { query = "" },
-            )
-
-            Spacer(Modifier.width(28.dp))
-
-            Column(Modifier.weight(1f).fillMaxSize()) {
-                when {
-                    query.isBlank() -> Hint(stringResource(R.string.search_start_hint))
-                    query.trim().length < 2 -> Hint(stringResource(R.string.common_keep_typing))
-                    !anyResults -> Hint(stringResource(R.string.search_no_results, query))
-                    else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (channelResults.isNotEmpty()) {
-                            item { SectionHeader(stringResource(R.string.common_channels)) }
-                            items(channelResults, key = { "c${it.key}" }) { row ->
-                                SearchResultRow(row = row, onClick = { onPlayChannel(row.primary) })
+        Column(Modifier.fillMaxSize()) {
+            when {
+                query.isBlank() -> Hint(stringResource(R.string.search_start_hint))
+                query.trim().length < 2 -> Hint(stringResource(R.string.common_keep_typing))
+                !anyResults -> Hint(stringResource(R.string.search_no_results, query))
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (channelResults.isNotEmpty()) {
+                        item { SectionHeader(stringResource(R.string.common_channels)) }
+                        items(channelResults, key = { "c${it.key}" }) { row ->
+                            SearchResultRow(row = row, onClick = { onPlayChannel(row.primary) })
+                        }
+                    }
+                    if (movieResults.isNotEmpty()) {
+                        item { SectionHeader(stringResource(R.string.nav_movies)) }
+                        items(movieResults, key = { "m${it.id}" }) { movie ->
+                            VodResultRow(movie.displayTitle, movie.posterUrl, movie.year?.toString()) {
+                                onPlayMovie(movie)
                             }
                         }
-                        if (movieResults.isNotEmpty()) {
-                            item { SectionHeader(stringResource(R.string.nav_movies)) }
-                            items(movieResults, key = { "m${it.id}" }) { movie ->
-                                VodResultRow(movie.displayTitle, movie.posterUrl, movie.year?.toString()) {
-                                    onPlayMovie(movie)
-                                }
-                            }
-                        }
-                        if (seriesResults.isNotEmpty()) {
-                            item { SectionHeader(stringResource(R.string.nav_shows)) }
-                            items(seriesResults, key = { "s${it.id}" }) { show ->
-                                VodResultRow(show.displayTitle, show.posterUrl, show.year?.toString()) {
-                                    onOpenSeries(show)
-                                }
+                    }
+                    if (seriesResults.isNotEmpty()) {
+                        item { SectionHeader(stringResource(R.string.nav_shows)) }
+                        items(seriesResults, key = { "s${it.id}" }) { show ->
+                            VodResultRow(show.displayTitle, show.posterUrl, show.year?.toString()) {
+                                onOpenSeries(show)
                             }
                         }
                     }
@@ -152,6 +174,8 @@ fun SearchScreen(
         }
     }
 }
+
+private const val MAX_QUERY_LENGTH = 40
 
 @Composable
 private fun Hint(text: String) {
