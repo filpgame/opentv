@@ -59,6 +59,7 @@ import app.opentv.data.model.Movie
 import app.opentv.data.model.Series
 import app.opentv.data.model.Source
 import app.opentv.data.parser.displayTitle
+import app.opentv.data.repo.MovieVariantGroup
 import app.opentv.ui.VodViewModel
 import coil.compose.AsyncImage
 
@@ -82,7 +83,7 @@ fun MoviesScreen(
     val recommended by viewModel.recommendedMovies.collectAsState()
     val recentlyAdded by viewModel.recentlyAddedMovies.collectAsState()
     val genreRows by viewModel.movieGenreRows.collectAsState()
-    val categoryMovies by viewModel.movies.collectAsState()
+    val movieBrowse by viewModel.movieBrowse.collectAsState()
     val vodLoading by viewModel.vodLoading.collectAsState()
     val sources by viewModel.sources.collectAsState()
     val selectedSource by viewModel.selectedVodSource.collectAsState()
@@ -96,6 +97,11 @@ fun MoviesScreen(
 
     // null = the curated home rows; a category id = that category's full grid.
     var browseCategory by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // The view model reads the category; the screen only says which one. Keying on the saved value
+    // (rather than calling from the chip's click) also re-issues the read after a restore, when the
+    // view model is fresh but the screen still remembers a category.
+    LaunchedEffect(browseCategory) { viewModel.selectMovieCategory(browseCategory) }
 
     val hasContent = resume.isNotEmpty() || recommended.isNotEmpty() ||
         recentlyAdded.isNotEmpty() || genreRows.isNotEmpty()
@@ -114,13 +120,13 @@ fun MoviesScreen(
             entries = categories.map { it.id to it.name },
             selected = browseCategory,
             onSelectHome = { browseCategory = null },
-            onSelectCategory = { id -> browseCategory = id; viewModel.selectMovieCategory(id) },
+            onSelectCategory = { id -> browseCategory = id },
         )
         // Weighted so the shelves fill the space under the fixed search + chips header, exactly and
         // unambiguously — the same reason Live TV weights its guide grid.
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                browseCategory != null -> MovieCategoryGrid(categoryMovies, viewModel, onOpenMovie)
+                browseCategory != null -> MovieCategoryGrid(movieBrowse, browseCategory, onOpenMovie)
                 !hasContent -> when {
                     vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_movies))
                     hasSources -> EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_no_movies_provider))
@@ -166,7 +172,7 @@ fun SeriesScreen(
     val resume by viewModel.continueWatching.collectAsState()
     val recentlyAdded by viewModel.recentlyAddedSeries.collectAsState()
     val genreRows by viewModel.seriesGenreRows.collectAsState()
-    val categorySeries by viewModel.series.collectAsState()
+    val seriesBrowse by viewModel.seriesBrowse.collectAsState()
     val vodLoading by viewModel.vodLoading.collectAsState()
     val sources by viewModel.sources.collectAsState()
     val selectedSource by viewModel.selectedVodSource.collectAsState()
@@ -177,6 +183,8 @@ fun SeriesScreen(
     }
 
     var browseCategory by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(browseCategory) { viewModel.selectSeriesCategory(browseCategory) }
 
     val hasContent = resume.isNotEmpty() || recentlyAdded.isNotEmpty() || genreRows.isNotEmpty()
 
@@ -194,11 +202,11 @@ fun SeriesScreen(
             entries = categories.map { it.id to it.name },
             selected = browseCategory,
             onSelectHome = { browseCategory = null },
-            onSelectCategory = { id -> browseCategory = id; viewModel.selectSeriesCategory(id) },
+            onSelectCategory = { id -> browseCategory = id },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                browseCategory != null -> SeriesCategoryGrid(categorySeries, onOpenSeries)
+                browseCategory != null -> SeriesCategoryGrid(seriesBrowse, browseCategory, onOpenSeries)
                 !hasContent -> when {
                     vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_shows))
                     hasSources -> EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_no_shows_provider))
@@ -224,11 +232,26 @@ fun SeriesScreen(
 
 // ---- Whole-category browse grids ---------------------------------------------------------------
 
-/** One category's films as a poster grid. Quality variants collapse to one card, badged. */
+/**
+ * One category's films as a poster grid. Quality variants collapse to one card, badged — already
+ * done by the view model, off the main thread. Until the category being asked for ([categoryId])
+ * has landed, a spinner stands in, so a tap answers at once instead of freezing on the read.
+ */
 @Composable
-private fun MovieCategoryGrid(movies: List<Movie>, viewModel: VodViewModel, onOpenMovie: (Movie) -> Unit) {
-    if (movies.isEmpty()) { LoadingVod(stringResource(R.string.vod_loading_movies)); return }
-    val groups = remember(movies) { viewModel.collapseVariants(movies) }
+private fun MovieCategoryGrid(
+    browse: VodViewModel.CategoryBrowse<MovieVariantGroup>,
+    categoryId: String?,
+    onOpenMovie: (Movie) -> Unit,
+) {
+    if (browse.loading || browse.categoryId != categoryId) {
+        LoadingVod(stringResource(R.string.vod_loading_movies), showProviderNote = false)
+        return
+    }
+    val groups = browse.items
+    if (groups.isEmpty()) {
+        EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_category_empty))
+        return
+    }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
         contentPadding = PaddingValues(16.dp),
@@ -258,8 +281,20 @@ private fun MovieCategoryGrid(movies: List<Movie>, viewModel: VodViewModel, onOp
 
 /** One category's shows as a poster grid. */
 @Composable
-private fun SeriesCategoryGrid(series: List<Series>, onOpenSeries: (Series) -> Unit) {
-    if (series.isEmpty()) { LoadingVod(stringResource(R.string.vod_loading_shows)); return }
+private fun SeriesCategoryGrid(
+    browse: VodViewModel.CategoryBrowse<Series>,
+    categoryId: String?,
+    onOpenSeries: (Series) -> Unit,
+) {
+    if (browse.loading || browse.categoryId != categoryId) {
+        LoadingVod(stringResource(R.string.vod_loading_shows), showProviderNote = false)
+        return
+    }
+    val series = browse.items
+    if (series.isEmpty()) {
+        EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_category_empty))
+        return
+    }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
         contentPadding = PaddingValues(16.dp),
@@ -649,17 +684,21 @@ private fun EmptyVod(title: String, body: String) {
 }
 
 @Composable
-private fun LoadingVod(message: String) {
+private fun LoadingVod(message: String, showProviderNote: Boolean = true) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator()
             Spacer(Modifier.height(16.dp))
             Text(message, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.vod_large_provider_note),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // The "couple of minutes" note is about the first provider download; opening a category
+            // that is already on disk is a local read and the note would only worry people.
+            if (showProviderNote) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.vod_large_provider_note),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
