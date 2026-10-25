@@ -350,6 +350,7 @@
     <string name="vod_no_shows_provider">Este provedor não retornou nenhuma série.</string>
     <string name="vod_no_shows_add">Adicione um provedor para ver as séries dele aqui.</string>
     <string name="vod_loading_episodes">Carregando episódios…</string>
+    <string name="vod_category_empty">Não há nada nesta categoria.</string>
     <string name="vod_all">Todos</string>
     <string name="vod_search_hint">Buscar filmes e séries</string>
     <string name="vod_continue_watching">Continuar assistindo</string>

@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -770,15 +771,55 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         ) { raw, sourceId -> if (sourceId == null) raw else raw.filter { it.sourceId == sourceId } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * What a whole-category grid shows. [categoryId] says which category [items] belong to, so the
+     * screen never paints the previous category's titles under the new chip while the read is in
+     * flight, and [loading] separates "still reading" from "this category really is empty".
+     *
+     * A plain class on purpose: the lists are thousands of titles, and a data class would make
+     * every StateFlow emission deep-compare them on the main thread to decide nothing changed.
+     */
+    @androidx.compose.runtime.Immutable
+    class CategoryBrowse<T>(
+        val categoryId: String? = null,
+        val loading: Boolean = false,
+        val items: List<T> = emptyList(),
+    )
+
+    // The category grids used to read the category, collapse its quality variants and hand the
+    // whole thing to composition, which ran the collapse (a regex plus the channel-name normaliser
+    // per title) on the main thread — a few-thousand-title category like "Filmes | Legendados"
+    // froze the UI on tap. Now the read and the collapse both run off the main thread, and the
+    // screen gets a [CategoryBrowse.loading] state to draw a spinner from while they do.
+    // No category selected (the home shelves) reads nothing: it used to subscribe to the whole
+    // movies table just in case, which is the 40k-row read the shelves never needed.
     @OptIn(ExperimentalCoroutinesApi::class)
-    val movies: StateFlow<List<Movie>> = movieCategory
-        .flatMapLatest { graph.catalogRepository.observeMovies(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val movieBrowse: StateFlow<CategoryBrowse<MovieVariantGroup>> = movieCategory
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(CategoryBrowse())
+            } else {
+                graph.catalogRepository.observeMovies(id)
+                    .map { CategoryBrowse(id, loading = false, items = graph.catalogRepository.collapseVariants(it)) }
+                    .flowOn(Dispatchers.Default)
+                    .onStart { emit(CategoryBrowse(id, loading = true)) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryBrowse())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val series: StateFlow<List<Series>> = seriesCategory
-        .flatMapLatest { graph.catalogRepository.observeSeries(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val seriesBrowse: StateFlow<CategoryBrowse<Series>> = seriesCategory
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(CategoryBrowse())
+            } else {
+                graph.catalogRepository.observeSeries(id)
+                    .map { CategoryBrowse(id, loading = false, items = it) }
+                    .flowOn(Dispatchers.Default)
+                    .onStart { emit(CategoryBrowse(id, loading = true)) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryBrowse())
 
     fun selectMovieCategory(id: String?) { movieCategory.value = id }
 
@@ -1046,10 +1087,6 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
     /** The active profile's saved resume position for a movie/episode, or null — drives Resume vs Watch now. */
     suspend fun resumePosition(mediaKey: String): PlaybackPosition? =
         graph.playbackPositions.get(settings.activeProfileId.value, mediaKey)
-
-    /** Collapses quality variants of a movie list for a browse grid. See CatalogRepository.collapseVariants. */
-    fun collapseVariants(movies: List<Movie>): List<MovieVariantGroup> =
-        graph.catalogRepository.collapseVariants(movies)
 
     /** Star / un-star a whole series. Wraps the series DAO through the shared database — no data-layer change. */
     fun toggleSeriesFavourite(series: Series) {

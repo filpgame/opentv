@@ -344,6 +344,7 @@
     <string name="vod_no_shows_provider">This provider didn\'t return any shows.</string>
     <string name="vod_no_shows_add">Add a provider to see its shows here.</string>
     <string name="vod_loading_episodes">Loading episodes…</string>
+    <string name="vod_category_empty">Nothing in this category.</string>
     <string name="vod_all">All</string>
     <string name="vod_search_hint">Search movies &amp; shows</string>
     <string name="vod_continue_watching">Continue watching</string>
