@@ -76,6 +76,15 @@ from playlists and sync. The current shape:
     `CatalogRepository.NORMALIZER_VERSION`; `OpenTvApp` re-normalises stored rows once, locally.
   - When playlist import changes what lands where, bump `PLAYLIST_LAYOUT_VERSION`; that re-downloads
     playlists once.
+- **VOD stamps** (`data/parser/VodVersions.stamp`): each movie and show stores, computed at import
+  from its name and category, a folded `searchKey`, a `variantKey` shared by its dubbed, subtitled
+  and 4K copies, and `subtitled` / `qualityRank` / `national` / `adult` flags.
+  - Search (`titleSearchQuery` in `Daos.kt`) requires every word in `searchKey` and ranks in SQL.
+  - Grids, rows and search fold copies by `variantKey` into one `VariantGroup` per title.
+  - Adult rows (`AdultContent`) are filtered in SQL, before any `LIMIT`, unless parental controls
+    are unlocked.
+  - When the rules change, bump `CatalogRepository.VOD_STAMP_VERSION`; `OpenTvApp` re-stamps stored
+    rows once, locally.
 - **`EpgRepository`**: feeds of three kinds (provider, built-in free, user URL) merged into one guide.
   - `syncAll` runs on every launch: `ensureFeeds`, then auto-enabling a regional built-in by sampling
     channel names, then the download, then `runMatcher`.
