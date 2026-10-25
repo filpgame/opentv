@@ -36,6 +36,7 @@ import app.opentv.sync.SyncBundle
 import app.opentv.sync.SyncClient
 import app.opentv.sync.SyncPosition
 import app.opentv.sync.SyncServer
+import app.opentv.ui.vod.sortedByTitle
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -793,6 +794,9 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
     // screen gets a [CategoryBrowse.loading] state to draw a spinner from while they do.
     // No category selected (the home shelves) reads nothing: it used to subscribe to the whole
     // movies table just in case, which is the 40k-row read the shelves never needed.
+    // The DAO hands a category over newest first; the grid is sorted here by folded displayed title
+    // instead, because that is what its A–Z bar jumps through. Not in SQL: the stored name still
+    // carries provider prefixes (`4K-EN - …`) that only the Kotlin title cleaner strips.
     @OptIn(ExperimentalCoroutinesApi::class)
     val movieBrowse: StateFlow<CategoryBrowse<MovieVariantGroup>> = movieCategory
         .flatMapLatest { id ->
@@ -800,7 +804,10 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
                 flowOf(CategoryBrowse())
             } else {
                 graph.catalogRepository.observeMovies(id)
-                    .map { CategoryBrowse(id, loading = false, items = graph.catalogRepository.collapseVariants(it)) }
+                    .map { movies ->
+                        val groups = graph.catalogRepository.collapseVariants(movies).sortedByTitle { it.primary.displayTitle }
+                        CategoryBrowse(id, loading = false, items = groups)
+                    }
                     .flowOn(Dispatchers.Default)
                     .onStart { emit(CategoryBrowse(id, loading = true)) }
             }
@@ -814,7 +821,7 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
                 flowOf(CategoryBrowse())
             } else {
                 graph.catalogRepository.observeSeries(id)
-                    .map { CategoryBrowse(id, loading = false, items = it) }
+                    .map { CategoryBrowse(id, loading = false, items = it.sortedByTitle { s -> s.displayTitle }) }
                     .flowOn(Dispatchers.Default)
                     .onStart { emit(CategoryBrowse(id, loading = true)) }
             }

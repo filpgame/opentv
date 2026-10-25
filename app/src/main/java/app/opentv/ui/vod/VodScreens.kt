@@ -246,12 +246,14 @@ private fun MovieCategoryGrid(
         EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_category_empty))
         return
     }
+    val jump = rememberAlphabetJump(groups) { it.primary.displayTitle }
     LazyVerticalGrid(
+        state = jump.gridState,
         columns = GridCells.Adaptive(minSize = 140.dp),
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(end = jump.barInset),
     ) {
         gridItems(groups, key = { it.primary.id }) { group ->
             val quality = group.variants.firstOrNull()?.qualityLabel?.takeIf { it.isNotBlank() }
@@ -268,9 +270,11 @@ private fun MovieCategoryGrid(
                 rating = group.primary.rating,
                 qualityBadge = badge,
                 onClick = { onOpenMovie(group.primary) },
+                modifier = jump.posterModifier(group),
             )
         }
     }
+    AlphabetJumpOverlay(jump)
 }
 
 /** One category's shows as a poster grid. */
@@ -289,12 +293,14 @@ private fun SeriesCategoryGrid(
         EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_category_empty))
         return
     }
+    val jump = rememberAlphabetJump(series) { it.displayTitle }
     LazyVerticalGrid(
+        state = jump.gridState,
         columns = GridCells.Adaptive(minSize = 140.dp),
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(end = jump.barInset),
     ) {
         gridItems(series, key = { it.id }) { item ->
             PosterCard(
@@ -303,9 +309,11 @@ private fun SeriesCategoryGrid(
                 subtitle = item.year?.toString(),
                 rating = item.rating,
                 onClick = { onOpenSeries(item) },
+                modifier = jump.posterModifier(item),
             )
         }
     }
+    AlphabetJumpOverlay(jump)
 }
 
 // ---- Shared shelves ----------------------------------------------------------------------------
