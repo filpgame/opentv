@@ -250,6 +250,22 @@ interface ChannelDao {
     )
     suspend fun matchKeysAfter(afterId: Long, limit: Int): List<ChannelMatchKeys>
 
+    /**
+     * One page of provider names for the region vote, in id order, keeping only ids that are a
+     * multiple of [step] — an evenly spread sample; a step of 1 is every channel. Paged like
+     * [matchKeysAfter].
+     */
+    @Query(
+        """
+        SELECT id, name FROM channels
+        WHERE id > :afterId AND id % :step = 0 ORDER BY id LIMIT :limit
+        """
+    )
+    suspend fun sampledNamesAfter(afterId: Long, step: Long, limit: Int): List<ChannelName>
+
+    @Query("SELECT MAX(id) FROM channels")
+    suspend fun maxId(): Long?
+
     @Upsert
     suspend fun upsertAll(channels: List<Channel>)
 
@@ -347,6 +363,9 @@ data class ChannelMatchKeys(
     val epgCandidates: List<String>
         get() = listOfNotNull(epgOverrideId, epgChannelId, matchedEpgId)
 }
+
+/** Projection for [ChannelDao.sampledNamesAfter]. */
+data class ChannelName(val id: Long, val name: String)
 
 /** Projection for [ChannelDao.channelCountsByCategory]. */
 data class CategoryChannelCount(val sourceId: Long, val categoryId: String, val count: Int)

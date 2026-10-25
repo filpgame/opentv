@@ -341,18 +341,36 @@ class EpgRepository(
             all.none { !it.builtIn && it.providerSourceId == null }
         if (!pristine) return
 
+        // Votes on an evenly spread sample of ids rather than every channel. This runs on every
+        // launch while the built-ins stay untouched, and a full normalise per name is ~25 s for a
+        // 330,000-entry M3U on a car head unit; the majority a sample finds is the same. Lists
+        // with fewer than REGION_VOTE_SAMPLE ids are still counted in full (step 1).
+        val step = (channelDao.maxId() ?: return) / REGION_VOTE_SAMPLE + 1
         val regionCounts = HashMap<String, Int>()
-        for (channel in channelDao.allForMatching()) {
-            val region = ChannelNameNormalizer.normalize(channel.name).region ?: continue
-            regionCounts.merge(region, 1, Int::plus)
+        var sampled = 0
+        var afterId = 0L
+        while (true) {
+            val page = channelDao.sampledNamesAfter(afterId, step, CHANNEL_PAGE_SIZE)
+            if (page.isEmpty()) break
+            for (channel in page) {
+                sampled++
+                val region = ChannelNameNormalizer.normalize(channel.name).region ?: continue
+                regionCounts.merge(region, 1, Int::plus)
+            }
+            afterId = page.last().id
         }
         val top = regionCounts.maxByOrNull { it.value } ?: return
-        if (top.value < MIN_CHANNELS_FOR_AUTO_REGION) return
+        // The floor is counted in whole-list channels, so scale the sample back up.
+        if (top.value * step < MIN_CHANNELS_FOR_AUTO_REGION) return
 
         val feedName = REGION_TO_FEED[top.key] ?: return
         val feed = builtIns.firstOrNull { it.name == feedName } ?: return
         feedDao.setEnabled(feed.id, true)
-        Log.i(TAG, "Auto-enabled '${feed.name}' — ${top.value} channels tagged ${top.key}")
+        Log.i(
+            TAG,
+            "Auto-enabled '${feed.name}' — ${top.value} of $sampled sampled channels " +
+                "tagged ${top.key}",
+        )
     }
 
     companion object {
@@ -363,6 +381,9 @@ class EpgRepository(
 
         /** Channels per paged read: a page of the narrow projections fits one cursor window. */
         const val CHANNEL_PAGE_SIZE = 5_000
+
+        /** Roughly how many channel names the region vote reads, however long the list. */
+        const val REGION_VOTE_SAMPLE = 5_000
 
         /** Keep finished programmes for a day so "what was on" still works. */
         val RETENTION_PAST_MILLIS: Long = TimeUnit.DAYS.toMillis(1)
