@@ -5,6 +5,8 @@
  */
 package app.opentv.pairing
 
+import app.opentv.R
+
 /**
  * The page the phone sees.
  *
@@ -12,80 +14,84 @@ package app.opentv.pairing
  * no frameworks, no analytics. The phone is talking to a television on the local network,
  * which may have no route to the internet at all, and a page that needs a CDN to render would
  * simply fail.
+ *
+ * Every string comes from [WebText], so the page is in the phone's language. Unlike [ManagerPage]
+ * it has no data script to feed: the two labels the script swaps when the type changes carry both
+ * of their texts as `data-` attributes instead.
  */
 object PairingPage {
 
-    fun form(token: String, error: String?): String = page(
+    fun form(token: String, error: String?, t: WebText): String = page(
+        t,
         """
-        <h1>Set up OpenTV</h1>
-        <p class="sub">Filling this in here beats using the remote.</p>
+        <h1>${t.html(R.string.pairpage_title)}</h1>
+        <p class="sub">${t.html(R.string.pairpage_sub)}</p>
 
-        ${if (error != null) "<div class=\"error\">${escape(error)}</div>" else ""}
+        ${if (error != null) "<div class=\"error\">${WebText.escape(error)}</div>" else ""}
 
         <form method="post" action="/submit" autocomplete="off">
-          <input type="hidden" name="t" value="${escape(token)}">
+          <input type="hidden" name="t" value="${WebText.escape(token)}">
 
           <div class="seg">
             <label class="segbtn">
               <input type="radio" name="kind" value="xtream" checked onchange="toggle()">
-              <span>Xtream login</span>
+              <span>${t.html(R.string.pairpage_kind_xtream)}</span>
             </label>
             <label class="segbtn">
               <input type="radio" name="kind" value="m3u" onchange="toggle()">
-              <span>M3U playlist</span>
+              <span>${t.html(R.string.pairpage_kind_m3u)}</span>
             </label>
           </div>
 
-          <label for="name">Name <span class="opt">optional</span></label>
-          <input id="name" name="name" type="text" placeholder="Living room provider">
+          <label for="name">${t.html(R.string.webpage_field_name_optional)}</label>
+          <input id="name" name="name" type="text" placeholder="${t.html(R.string.pairpage_name_placeholder)}">
 
-          <label for="url" id="url-label">Server address</label>
-          <input id="url" name="url" type="url" inputmode="url" required
+          <label for="url" id="url-label"
+                 data-xtream="${t.html(R.string.onboarding_server_address)}"
+                 data-m3u="${t.html(R.string.onboarding_playlist_url)}">${t.html(R.string.onboarding_server_address)}</label>
+          <input id="url" name="url" type="url" inputmode="url" required dir="ltr"
                  placeholder="http://example.com:8080"
                  autocapitalize="off" autocorrect="off" spellcheck="false">
-          <p class="hint" id="url-hint">
-            Paste the whole line from your provider if that's easier — extra bits get trimmed.
-          </p>
+          <p class="hint" id="url-hint"
+             data-xtream="${t.html(R.string.pairpage_url_hint)}"
+             data-m3u="${t.html(R.string.onboarding_playlist_help)}">${t.html(R.string.pairpage_url_hint)}</p>
 
           <div id="creds">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text"
+            <label for="username">${t.html(R.string.webpage_field_username)}</label>
+            <input id="username" name="username" type="text" dir="ltr"
                    autocapitalize="off" autocorrect="off" spellcheck="false">
 
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password">
+            <label for="password">${t.html(R.string.webpage_field_password)}</label>
+            <input id="password" name="password" type="password" dir="ltr">
           </div>
 
-          <label for="epg">Guide (XMLTV) URL <span class="opt">optional</span></label>
-          <input id="epg" name="epg" type="url" inputmode="url"
+          <label for="epg">${t.html(R.string.onboarding_guide_url_optional)}</label>
+          <input id="epg" name="epg" type="url" inputmode="url" dir="ltr"
                  autocapitalize="off" autocorrect="off" spellcheck="false">
-          <p class="hint">Leave blank to use your provider's guide automatically.</p>
+          <p class="hint">${t.html(R.string.onboarding_guide_blank_help)}</p>
 
           <hr>
 
-          <label for="code">Code shown on the TV</label>
+          <label for="code">${t.html(R.string.pairpage_field_code)}</label>
           <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]*"
-                 maxlength="6" required class="code" placeholder="000000"
+                 maxlength="6" required class="code" placeholder="000000" dir="ltr"
                  autocomplete="one-time-code">
-          <p class="hint">This is what proves it's you standing in front of the telly.</p>
+          <p class="hint">${t.html(R.string.pairpage_code_hint)}</p>
 
-          <button type="submit">Send to TV</button>
+          <button type="submit">${t.html(R.string.pairpage_send)}</button>
         </form>
 
-        <p class="privacy">
-          This page is served by your television, over your own network. What you type goes
-          straight to it and nowhere else — there is no OpenTV account and no OpenTV server.
-        </p>
+        <p class="privacy">${t.html(R.string.pairpage_privacy)}</p>
 
         <script>
           function toggle() {
             var isM3u = document.querySelector('input[name=kind]:checked').value === 'm3u';
+            var pick = function (el) { return el.getAttribute(isM3u ? 'data-m3u' : 'data-xtream'); };
             document.getElementById('creds').style.display = isM3u ? 'none' : 'block';
-            document.getElementById('url-label').textContent =
-              isM3u ? 'Playlist URL' : 'Server address';
-            document.getElementById('url-hint').textContent = isM3u
-              ? 'The full http link to your .m3u or .m3u8 file.'
-              : "Paste the whole line from your provider if that's easier.";
+            var label = document.getElementById('url-label');
+            label.textContent = pick(label);
+            var hint = document.getElementById('url-hint');
+            hint.textContent = pick(hint);
             document.getElementById('username').required = !isM3u;
             document.getElementById('password').required = !isM3u;
           }
@@ -94,21 +100,22 @@ object PairingPage {
         """.trimIndent(),
     )
 
-    fun message(title: String, body: String): String = page(
+    fun message(title: String, body: String, t: WebText): String = page(
+        t,
         """
-        <h1>${escape(title)}</h1>
-        <p class="sub">${escape(body)}</p>
+        <h1>${WebText.escape(title)}</h1>
+        <p class="sub">${WebText.escape(body)}</p>
         """.trimIndent(),
     )
 
-    private fun page(content: String): String = """
+    private fun page(t: WebText, content: String): String = """
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="${t.tag}" dir="${if (t.rtl) "rtl" else "ltr"}">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="robots" content="noindex, nofollow">
-        <title>Set up OpenTV</title>
+        <title>${t.html(R.string.pairpage_title)}</title>
         <style>
           :root { --bg:#07080c; --surface:#12141d; --line:#2a2f3d; --text:#e8eaf0;
                   --muted:#a8aec0; --accent:#7c93ff; --err:#ff6b6b; }
@@ -119,7 +126,6 @@ object PairingPage {
           h1 { font-size:1.7rem; margin:0 0 6px; letter-spacing:-.02em; }
           .sub { color:var(--muted); margin:0 0 24px; }
           label { display:block; font-size:.9rem; font-weight:600; margin:18px 0 6px; }
-          .opt { font-weight:400; color:var(--muted); font-size:.82rem; }
           input[type=text], input[type=url], input[type=password] {
             width:100%; padding:14px; font-size:17px; /* 16px+ stops iOS zooming on focus */
             background:var(--surface); color:var(--text);
@@ -148,12 +154,4 @@ object PairingPage {
         </div></body>
         </html>
     """.trimIndent()
-
-    /** Minimal HTML escaping. Everything interpolated into the page goes through here. */
-    private fun escape(value: String): String = value
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
 }

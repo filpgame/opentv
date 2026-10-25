@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Αποθήκευση κλειδιού</string>
     <string name="settings_tmdb_saved">Το κλειδί TMDB αποθηκεύτηκε</string>
     <string name="settings_tmdb_active">Ενεργό</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — διαχείριση καναλιών</string>
+    <string name="webpage_hint">Οι αλλαγές εφαρμόζονται στην τηλεόρασή σας αμέσως μόλις τις κάνετε.</string>
+    <string name="webpage_unreachable">Δεν ήταν δυνατή η επικοινωνία με την τηλεόραση — είστε ακόμη στο ίδιο Wi-Fi;</string>
+    <string name="webpage_privacy">Αυτή η σελίδα εξυπηρετείται από την τηλεόρασή σας, μέσω του δικού σας δικτύου — δεν υπάρχει λογαριασμός OpenTV ούτε διακομιστής OpenTV. Τίποτα από όσα αλλάζετε εδώ δεν φεύγει από το σπίτι σας.</string>
+    <string name="webpage_field_type">Τύπος</string>
+    <string name="webpage_field_name_optional">Όνομα (προαιρετικό)</string>
+    <string name="webpage_field_username">Όνομα χρήστη</string>
+    <string name="webpage_field_password">Κωδικός πρόσβασης</string>
+    <string name="webpage_test">Δοκιμή</string>
+    <string name="webpage_testing">Γίνεται δοκιμή…</string>
+    <string name="webpage_test_failed">Η δοκιμή απέτυχε</string>
+    <string name="webpage_test_ok_default">Όλα καλά.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Προσθέστε από εδώ μια πύλη Xtream, M3U ή Stalker — ένα κανονικό πληκτρολόγιο είναι καλύτερο από το τηλεχειριστήριο. Τα στοιχεία σύνδεσής σας μένουν στην τηλεόραση.</string>
+    <string name="webpage_prov_name_placeholder">Ο πάροχός μου</string>
+    <string name="webpage_prov_add">Προσθήκη και φόρτωση καναλιών</string>
+    <string name="webpage_enter_url">Εισαγάγετε το URL.</string>
+    <string name="webpage_user_pass_required">Το όνομα χρήστη και ο κωδικός πρόσβασης είναι υποχρεωτικά.</string>
+    <string name="webpage_mac_required">Η διεύθυνση MAC είναι υποχρεωτική.</string>
+    <string name="webpage_adding">Γίνεται προσθήκη και φόρτωση καναλιών…</string>
+    <string name="webpage_added">Προστέθηκε — φορτώθηκαν %1$d κανάλια.</string>
+    <string name="webpage_add_failed">Δεν ήταν δυνατή η προσθήκη του παρόχου</string>
+    <string name="webpage_err_fill_required">Συμπληρώστε τα υποχρεωτικά πεδία για αυτόν τον τύπο παρόχου.</string>
+    <string name="webpage_err_save_source">Δεν ήταν δυνατή η αποθήκευση της πηγής.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) για συγχρονισμό</string>
+    <string name="webpage_nas_hint">Ο δικτυακός δίσκος μέσω του οποίου οι συσκευές σας συγχρονίζουν τα αγαπημένα και το ιστορικό παρακολούθησης. Αποθηκεύεται απευθείας στην τηλεόρασή σας — ο κωδικός πρόσβασης μένει στην τηλεόραση.</string>
+    <string name="webpage_nas_server">Διακομιστής (διεύθυνση IP)</string>
+    <string name="webpage_nas_share">Κοινόχρηστος φάκελος</string>
+    <string name="webpage_nas_folder">Φάκελος (προαιρετικό)</string>
+    <string name="webpage_nas_folder_placeholder">(αφήστε κενό)</string>
+    <string name="webpage_nas_save">Αποθήκευση NAS</string>
+    <string name="webpage_nas_test">Δοκιμή σύνδεσης</string>
+    <string name="webpage_nas_password_unchanged">•••• (αμετάβλητο)</string>
+    <string name="webpage_nas_required">Ο διακομιστής και ο κοινόχρηστος φάκελος είναι υποχρεωτικά.</string>
+    <string name="webpage_nas_saving">Αποθήκευση και δοκιμή…</string>
+    <string name="webpage_nas_connected">Συνδέθηκε στο NAS. ✓</string>
+    <string name="webpage_nas_failed">Δεν ήταν δυνατή η σύνδεση με το NAS: %1$s</string>
+    <string name="webpage_nas_check_details">ελέγξτε τα στοιχεία</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Φιλτράρισμα κατηγοριών…</string>
+    <string name="webpage_no_categories_match">Καμία κατηγορία δεν ταιριάζει.</string>
+    <string name="webpage_no_channels_yet">Δεν υπάρχουν ακόμη κανάλια — προσθέστε παραπάνω έναν πάροχο για να ξεκινήσετε.</string>
+    <string name="webpage_channels_hint">Πατήστε ένα όνομα για μετονομασία. Αστέρι για αγαπημένο, μάτι για απόκρυψη, βέλη για αναδιάταξη.</string>
+    <string name="webpage_channel_number">Αρ. %1$d</string>
+    <string name="webpage_hidden_tap_show">Κρυφό — πατήστε για εμφάνιση</string>
+    <string name="webpage_showing_tap_hide">Ορατό — πατήστε για απόκρυψη</string>
+    <string name="webpage_move_up">Μετακίνηση πάνω</string>
+    <string name="webpage_move_down">Μετακίνηση κάτω</string>
+    <string name="webpage_favourited">Προστέθηκε στα αγαπημένα</string>
+    <string name="webpage_unfavourited">Αφαιρέθηκε από τα αγαπημένα</string>
+    <string name="webpage_hidden_from_guide">Κρύφτηκε από τον οδηγό</string>
+    <string name="webpage_showing_in_guide">Εμφανίζεται στον οδηγό</string>
+    <string name="webpage_renamed">Μετονομάστηκε</string>
+    <string name="webpage_rename_failed">Δεν ήταν δυνατή η αποθήκευση του ονόματος.</string>
+    <string name="webpage_order_saved">Η σειρά αποθηκεύτηκε</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Ρύθμιση του OpenTV</string>
+    <string name="pairpage_sub">Η συμπλήρωση εδώ είναι πιο εύκολη από το τηλεχειριστήριο.</string>
+    <string name="pairpage_kind_xtream">Σύνδεση Xtream</string>
+    <string name="pairpage_kind_m3u">Λίστα αναπαραγωγής M3U</string>
+    <string name="pairpage_name_placeholder">Πάροχος σαλονιού</string>
+    <string name="pairpage_url_hint">Επικολλήστε ολόκληρη τη γραμμή από τον πάροχό σας αν είναι πιο εύκολο — τα επιπλέον στοιχεία θα αφαιρεθούν.</string>
+    <string name="pairpage_field_code">Κωδικός που εμφανίζεται στην τηλεόραση</string>
+    <string name="pairpage_code_hint">Έτσι αποδεικνύεται ότι εσείς βρίσκεστε μπροστά στην τηλεόραση.</string>
+    <string name="pairpage_send">Αποστολή στην τηλεόραση</string>
+    <string name="pairpage_privacy">Αυτή η σελίδα εξυπηρετείται από την τηλεόρασή σας, μέσω του δικού σας δικτύου. Ό,τι πληκτρολογήσετε πηγαίνει απευθείας εκεί και πουθενά αλλού — δεν υπάρχει λογαριασμός OpenTV ούτε διακομιστής OpenTV.</string>
+    <string name="pairpage_err_code">Ο κωδικός δεν ταιριάζει με αυτόν της τηλεόρασης. Υπολειπόμενες προσπάθειες: %1$d.</string>
+    <string name="pairpage_err_url">Συμπληρώστε τη διεύθυνση του διακομιστή.</string>
+    <string name="pairpage_too_many_title">Πάρα πολλές προσπάθειες</string>
+    <string name="pairpage_too_many_body">Ξεκινήστε ξανά τη σύζευξη στην τηλεόραση για να λάβετε νέο κωδικό.</string>
+    <string name="pairpage_sent_title">Στάλθηκε στην τηλεόρασή σας</string>
+    <string name="pairpage_sent_body">Μπορείτε να αφήσετε κάτω το κινητό — τα υπόλοιπα γίνονται στην τηλεόραση.</string>
 </resources>

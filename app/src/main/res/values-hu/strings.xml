@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Kulcs mentése</string>
     <string name="settings_tmdb_saved">TMDB-kulcs elmentve</string>
     <string name="settings_tmdb_active">Aktív</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — csatornák kezelése</string>
+    <string name="webpage_hint">A módosítások azonnal érvénybe lépnek a TV-jén.</string>
+    <string name="webpage_unreachable">A TV nem érhető el — még mindig ugyanazon a Wi-Fi-n van?</string>
+    <string name="webpage_privacy">Ezt az oldalt a televíziója szolgálja ki a saját hálózatán keresztül — nincs OpenTV-fiók és nincs OpenTV-szerver. Semmi, amit itt módosít, nem hagyja el az otthonát.</string>
+    <string name="webpage_field_type">Típus</string>
+    <string name="webpage_field_name_optional">Név (nem kötelező)</string>
+    <string name="webpage_field_username">Felhasználónév</string>
+    <string name="webpage_field_password">Jelszó</string>
+    <string name="webpage_test">Teszt</string>
+    <string name="webpage_testing">Tesztelés…</string>
+    <string name="webpage_test_failed">A teszt sikertelen</string>
+    <string name="webpage_test_ok_default">Minden rendben.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Itt adhat hozzá Xtream, M3U vagy Stalker portált — egy igazi billentyűzet kényelmesebb a TV távirányítójánál. A bejelentkezési adatai a TV-n maradnak.</string>
+    <string name="webpage_prov_name_placeholder">Saját szolgáltató</string>
+    <string name="webpage_prov_add">Hozzáadás és csatornák betöltése</string>
+    <string name="webpage_enter_url">Adja meg az URL-t.</string>
+    <string name="webpage_user_pass_required">A felhasználónév és a jelszó megadása kötelező.</string>
+    <string name="webpage_mac_required">A MAC-cím megadása kötelező.</string>
+    <string name="webpage_adding">Hozzáadás és csatornák betöltése…</string>
+    <string name="webpage_added">Hozzáadva — %1$d csatorna betöltve.</string>
+    <string name="webpage_add_failed">Nem sikerült hozzáadni a szolgáltatót</string>
+    <string name="webpage_err_fill_required">Töltse ki a szolgáltatótípus kötelező mezőit.</string>
+    <string name="webpage_err_save_source">Nem sikerült menteni a forrást.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) a szinkronizáláshoz</string>
+    <string name="webpage_nas_hint">A hálózati meghajtó, amelyen keresztül az eszközei szinkronizálják a kedvenceket és a megtekintési előzményeket. Közvetlenül a TV-jére menti — a jelszó a TV-n marad.</string>
+    <string name="webpage_nas_server">Szerver (IP-cím)</string>
+    <string name="webpage_nas_share">Megosztás</string>
+    <string name="webpage_nas_folder">Mappa (nem kötelező)</string>
+    <string name="webpage_nas_folder_placeholder">(hagyja üresen)</string>
+    <string name="webpage_nas_save">NAS mentése</string>
+    <string name="webpage_nas_test">Kapcsolat tesztelése</string>
+    <string name="webpage_nas_password_unchanged">•••• (változatlan)</string>
+    <string name="webpage_nas_required">A szerver és a megosztás megadása kötelező.</string>
+    <string name="webpage_nas_saving">Mentés és tesztelés…</string>
+    <string name="webpage_nas_connected">Csatlakozva a NAS-hoz. ✓</string>
+    <string name="webpage_nas_failed">Nem sikerült elérni a NAS-t: %1$s</string>
+    <string name="webpage_nas_check_details">ellenőrizze az adatokat</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Kategóriák szűrése…</string>
+    <string name="webpage_no_categories_match">Nincs egyező kategória.</string>
+    <string name="webpage_no_channels_yet">Még nincsenek csatornák — a kezdéshez adjon hozzá egy szolgáltatót fent.</string>
+    <string name="webpage_channels_hint">Koppintson egy névre az átnevezéshez. Csillag: kedvenc, szem: elrejtés, nyilak: sorrend.</string>
+    <string name="webpage_channel_number">%1$d. sz.</string>
+    <string name="webpage_hidden_tap_show">Elrejtve — koppintson a megjelenítéshez</string>
+    <string name="webpage_showing_tap_hide">Látható — koppintson az elrejtéshez</string>
+    <string name="webpage_move_up">Mozgatás feljebb</string>
+    <string name="webpage_move_down">Mozgatás lejjebb</string>
+    <string name="webpage_favourited">Hozzáadva a kedvencekhez</string>
+    <string name="webpage_unfavourited">Eltávolítva a kedvencek közül</string>
+    <string name="webpage_hidden_from_guide">Elrejtve a műsorújságból</string>
+    <string name="webpage_showing_in_guide">Megjelenik a műsorújságban</string>
+    <string name="webpage_renamed">Átnevezve</string>
+    <string name="webpage_rename_failed">Nem sikerült menteni a nevet.</string>
+    <string name="webpage_order_saved">Sorrend mentve</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Az OpenTV beállítása</string>
+    <string name="pairpage_sub">Itt kitölteni egyszerűbb, mint a távirányítóval.</string>
+    <string name="pairpage_kind_xtream">Xtream bejelentkezés</string>
+    <string name="pairpage_kind_m3u">M3U lejátszási lista</string>
+    <string name="pairpage_name_placeholder">Nappali szolgáltató</string>
+    <string name="pairpage_url_hint">Ha egyszerűbb, illessze be a teljes sort a szolgáltatójától — a felesleges részeket a rendszer eltávolítja.</string>
+    <string name="pairpage_field_code">A TV-n látható kód</string>
+    <string name="pairpage_code_hint">Ebből tudjuk, hogy Ön áll a TV előtt.</string>
+    <string name="pairpage_send">Küldés a TV-re</string>
+    <string name="pairpage_privacy">Ezt az oldalt a televíziója szolgálja ki a saját hálózatán keresztül. Amit beír, az közvetlenül oda kerül, máshová nem — nincs OpenTV-fiók és nincs OpenTV-szerver.</string>
+    <string name="pairpage_err_code">A kód nem egyezik a TV-n láthatóval. Hátralévő próbálkozások: %1$d.</string>
+    <string name="pairpage_err_url">Kérjük, adja meg a szerver címét.</string>
+    <string name="pairpage_too_many_title">Túl sok próbálkozás</string>
+    <string name="pairpage_too_many_body">A párosítást indítsa újra a TV-n, hogy új kódot kapjon.</string>
+    <string name="pairpage_sent_title">Elküldve a TV-jére</string>
+    <string name="pairpage_sent_body">Leteheti a telefonját — a többi a TV-n történik.</string>
 </resources>

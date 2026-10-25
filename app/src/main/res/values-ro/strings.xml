@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Salvează cheia</string>
     <string name="settings_tmdb_saved">Cheia TMDB a fost salvată</string>
     <string name="settings_tmdb_active">Activ</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — gestionare canale</string>
+    <string name="webpage_hint">Modificările se aplică pe televizorul tău imediat ce le faci.</string>
+    <string name="webpage_unreachable">Nu am putut contacta televizorul — ești tot pe același wifi?</string>
+    <string name="webpage_privacy">Această pagină este oferită de televizorul tău, prin propria ta rețea — nu există cont OpenTV și nici server OpenTV. Nimic din ce modifici aici nu iese din casa ta.</string>
+    <string name="webpage_field_type">Tip</string>
+    <string name="webpage_field_name_optional">Nume (opțional)</string>
+    <string name="webpage_field_username">Nume utilizator</string>
+    <string name="webpage_field_password">Parolă</string>
+    <string name="webpage_test">Testează</string>
+    <string name="webpage_testing">Se testează…</string>
+    <string name="webpage_test_failed">Testul a eșuat</string>
+    <string name="webpage_test_ok_default">Totul arată bine.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Adaugă de aici un portal Xtream, M3U sau Stalker — o tastatură adevărată bate telecomanda TV-ului. Datele tale de autentificare rămân pe televizor.</string>
+    <string name="webpage_prov_name_placeholder">Furnizorul meu</string>
+    <string name="webpage_prov_add">Adaugă și încarcă canalele</string>
+    <string name="webpage_enter_url">Introdu URL-ul.</string>
+    <string name="webpage_user_pass_required">Numele de utilizator și parola sunt obligatorii.</string>
+    <string name="webpage_mac_required">Adresa MAC este obligatorie.</string>
+    <string name="webpage_adding">Se adaugă și se încarcă canalele…</string>
+    <string name="webpage_added">Adăugat — %1$d canale încărcate.</string>
+    <string name="webpage_add_failed">Nu am putut adăuga furnizorul</string>
+    <string name="webpage_err_fill_required">Completează câmpurile obligatorii pentru acest tip de furnizor.</string>
+    <string name="webpage_err_save_source">Nu am putut salva sursa.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) pentru sincronizare</string>
+    <string name="webpage_nas_hint">Unitatea de rețea prin care dispozitivele tale sincronizează favoritele și istoricul de vizionare. Se salvează direct pe televizor — parola rămâne pe televizor.</string>
+    <string name="webpage_nas_server">Server (adresă IP)</string>
+    <string name="webpage_nas_share">Partajare</string>
+    <string name="webpage_nas_folder">Folder (opțional)</string>
+    <string name="webpage_nas_folder_placeholder">(lasă gol)</string>
+    <string name="webpage_nas_save">Salvează NAS</string>
+    <string name="webpage_nas_test">Testează conexiunea</string>
+    <string name="webpage_nas_password_unchanged">•••• (neschimbată)</string>
+    <string name="webpage_nas_required">Serverul și partajarea sunt obligatorii.</string>
+    <string name="webpage_nas_saving">Se salvează și se testează…</string>
+    <string name="webpage_nas_connected">Conectat la NAS. ✓</string>
+    <string name="webpage_nas_failed">Nu am putut contacta NAS-ul: %1$s</string>
+    <string name="webpage_nas_check_details">verifică detaliile</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Filtrează categoriile…</string>
+    <string name="webpage_no_categories_match">Nicio categorie nu se potrivește.</string>
+    <string name="webpage_no_channels_yet">Încă nu există canale — adaugă mai sus un furnizor pentru a începe.</string>
+    <string name="webpage_channels_hint">Atinge un nume pentru a-l redenumi. Steaua adaugă la favorite, ochiul ascunde, săgețile schimbă ordinea.</string>
+    <string name="webpage_channel_number">Nr. %1$d</string>
+    <string name="webpage_hidden_tap_show">Ascuns — atinge pentru a afișa</string>
+    <string name="webpage_showing_tap_hide">Afișat — atinge pentru a ascunde</string>
+    <string name="webpage_move_up">Mută în sus</string>
+    <string name="webpage_move_down">Mută în jos</string>
+    <string name="webpage_favourited">Adăugat la favorite</string>
+    <string name="webpage_unfavourited">Eliminat de la favorite</string>
+    <string name="webpage_hidden_from_guide">Ascuns din ghid</string>
+    <string name="webpage_showing_in_guide">Afișat în ghid</string>
+    <string name="webpage_renamed">Redenumit</string>
+    <string name="webpage_rename_failed">Nu am putut salva numele.</string>
+    <string name="webpage_order_saved">Ordinea a fost salvată</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Configurează OpenTV</string>
+    <string name="pairpage_sub">Aici e mai simplu de completat decât cu telecomanda.</string>
+    <string name="pairpage_kind_xtream">Autentificare Xtream</string>
+    <string name="pairpage_kind_m3u">Playlist M3U</string>
+    <string name="pairpage_name_placeholder">Furnizor din sufragerie</string>
+    <string name="pairpage_url_hint">Lipește întreaga linie de la furnizorul tău dacă e mai ușor — părțile în plus vor fi eliminate.</string>
+    <string name="pairpage_field_code">Codul afișat pe televizor</string>
+    <string name="pairpage_code_hint">Așa știm că tu ești cel care stă în fața televizorului.</string>
+    <string name="pairpage_send">Trimite către televizor</string>
+    <string name="pairpage_privacy">Această pagină este oferită de televizorul tău, prin propria ta rețea. Ce tastezi ajunge direct la el și nicăieri altundeva — nu există cont OpenTV și nici server OpenTV.</string>
+    <string name="pairpage_err_code">Codul nu se potrivește cu cel de pe televizor. Încercări rămase: %1$d.</string>
+    <string name="pairpage_err_url">Completează adresa serverului.</string>
+    <string name="pairpage_too_many_title">Prea multe încercări</string>
+    <string name="pairpage_too_many_body">Începe din nou asocierea pe televizor pentru a primi un cod nou.</string>
+    <string name="pairpage_sent_title">Trimis către televizorul tău</string>
+    <string name="pairpage_sent_body">Poți lăsa telefonul din mână — restul se întâmplă pe televizor.</string>
 </resources>

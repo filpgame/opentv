@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Запази ключа</string>
     <string name="settings_tmdb_saved">TMDB ключът е запазен</string>
     <string name="settings_tmdb_active">Активен</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — управление на каналите</string>
+    <string name="webpage_hint">Промените се прилагат на телевизора ви веднага.</string>
+    <string name="webpage_unreachable">Няма връзка с телевизора — все още ли сте в същата wifi мрежа?</string>
+    <string name="webpage_privacy">Тази страница се обслужва от вашия телевизор през собствената ви мрежа — няма акаунт в OpenTV и няма сървър на OpenTV. Нищо, което промените тук, не напуска дома ви.</string>
+    <string name="webpage_field_type">Тип</string>
+    <string name="webpage_field_name_optional">Име (по избор)</string>
+    <string name="webpage_field_username">Потребителско име</string>
+    <string name="webpage_field_password">Парола</string>
+    <string name="webpage_test">Тест</string>
+    <string name="webpage_testing">Тестване…</string>
+    <string name="webpage_test_failed">Тестът не успя</string>
+    <string name="webpage_test_ok_default">Изглежда наред.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Добавете Xtream, M3U или Stalker портал оттук — истинската клавиатура е по-удобна от дистанционното. Данните ви за вход остават на телевизора.</string>
+    <string name="webpage_prov_name_placeholder">Моят доставчик</string>
+    <string name="webpage_prov_add">Добавяне и зареждане на канали</string>
+    <string name="webpage_enter_url">Въведете URL адреса.</string>
+    <string name="webpage_user_pass_required">Потребителското име и паролата са задължителни.</string>
+    <string name="webpage_mac_required">MAC адресът е задължителен.</string>
+    <string name="webpage_adding">Добавяне и зареждане на канали…</string>
+    <string name="webpage_added">Добавено — заредени канали: %1$d.</string>
+    <string name="webpage_add_failed">Доставчикът не можа да бъде добавен</string>
+    <string name="webpage_err_fill_required">Попълнете задължителните полета за този тип доставчик.</string>
+    <string name="webpage_err_save_source">Източникът не можа да бъде запазен.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) за синхронизиране</string>
+    <string name="webpage_nas_hint">Мрежовото устройство, през което устройствата ви синхронизират любимите и историята на гледане. Запазва се директно на телевизора — паролата остава на телевизора.</string>
+    <string name="webpage_nas_server">Сървър (IP адрес)</string>
+    <string name="webpage_nas_share">Споделен ресурс</string>
+    <string name="webpage_nas_folder">Папка (по избор)</string>
+    <string name="webpage_nas_folder_placeholder">(оставете празно)</string>
+    <string name="webpage_nas_save">Запазване на NAS</string>
+    <string name="webpage_nas_test">Тест на връзката</string>
+    <string name="webpage_nas_password_unchanged">•••• (непроменена)</string>
+    <string name="webpage_nas_required">Сървърът и споделеният ресурс са задължителни.</string>
+    <string name="webpage_nas_saving">Запазване и тестване…</string>
+    <string name="webpage_nas_connected">Свързано с NAS. ✓</string>
+    <string name="webpage_nas_failed">Неуспешно свързване с NAS: %1$s</string>
+    <string name="webpage_nas_check_details">проверете данните</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Филтриране на категории…</string>
+    <string name="webpage_no_categories_match">Няма съвпадащи категории.</string>
+    <string name="webpage_no_channels_yet">Още няма канали — добавете доставчик по-горе, за да започнете.</string>
+    <string name="webpage_channels_hint">Докоснете име, за да го преименувате. Звезда — любим, око — скриване, стрелки — подреждане.</string>
+    <string name="webpage_channel_number">№ %1$d</string>
+    <string name="webpage_hidden_tap_show">Скрит — докоснете, за да го покажете</string>
+    <string name="webpage_showing_tap_hide">Показва се — докоснете, за да го скриете</string>
+    <string name="webpage_move_up">Премести нагоре</string>
+    <string name="webpage_move_down">Премести надолу</string>
+    <string name="webpage_favourited">Добавен към любими</string>
+    <string name="webpage_unfavourited">Премахнат от любими</string>
+    <string name="webpage_hidden_from_guide">Скрит от програмата</string>
+    <string name="webpage_showing_in_guide">Показва се в програмата</string>
+    <string name="webpage_renamed">Преименуван</string>
+    <string name="webpage_rename_failed">Името не можа да бъде запазено.</string>
+    <string name="webpage_order_saved">Редът е запазен</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Настройка на OpenTV</string>
+    <string name="pairpage_sub">Тук попълването е по-удобно, отколкото с дистанционното.</string>
+    <string name="pairpage_kind_xtream">Вход с Xtream</string>
+    <string name="pairpage_kind_m3u">M3U плейлист</string>
+    <string name="pairpage_name_placeholder">Доставчик за хола</string>
+    <string name="pairpage_url_hint">Поставете целия ред от доставчика си, ако е по-лесно — излишното се премахва.</string>
+    <string name="pairpage_field_code">Код, показан на телевизора</string>
+    <string name="pairpage_code_hint">Така се уверяваме, че пред телевизора стоите именно вие.</string>
+    <string name="pairpage_send">Изпращане към телевизора</string>
+    <string name="pairpage_privacy">Тази страница се обслужва от вашия телевизор през собствената ви мрежа. Каквото въведете, отива директно към него и никъде другаде — няма акаунт в OpenTV и няма сървър на OpenTV.</string>
+    <string name="pairpage_err_code">Кодът не съвпада с този на телевизора. Оставащи опити: %1$d.</string>
+    <string name="pairpage_err_url">Моля, въведете адреса на сървъра.</string>
+    <string name="pairpage_too_many_title">Твърде много опити</string>
+    <string name="pairpage_too_many_body">Започнете свързването отново на телевизора, за да получите нов код.</string>
+    <string name="pairpage_sent_title">Изпратено към телевизора</string>
+    <string name="pairpage_sent_body">Можете да оставите телефона — останалото се случва на телевизора.</string>
 </resources>

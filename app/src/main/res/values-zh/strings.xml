@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">保存密钥</string>
     <string name="settings_tmdb_saved">TMDB 密钥已保存</string>
     <string name="settings_tmdb_active">已启用</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV——频道管理</string>
+    <string name="webpage_hint">更改会在你操作的那一刻应用到电视上。</string>
+    <string name="webpage_unreachable">无法连接到电视——还在同一个 Wi-Fi 下吗？</string>
+    <string name="webpage_privacy">此页面由你的电视通过你自己的网络提供——没有 OpenTV 账户，也没有 OpenTV 服务器。你在这里所做的更改不会离开你的家。</string>
+    <string name="webpage_field_type">类型</string>
+    <string name="webpage_field_name_optional">名称（可选）</string>
+    <string name="webpage_field_username">用户名</string>
+    <string name="webpage_field_password">密码</string>
+    <string name="webpage_test">测试</string>
+    <string name="webpage_testing">测试中…</string>
+    <string name="webpage_test_failed">测试失败</string>
+    <string name="webpage_test_ok_default">一切正常。</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">可在此添加 Xtream、M3U 或 Stalker 门户——实体键盘比电视遥控器好用得多。你的登录信息只保存在电视上。</string>
+    <string name="webpage_prov_name_placeholder">我的提供商</string>
+    <string name="webpage_prov_add">添加并加载频道</string>
+    <string name="webpage_enter_url">请输入 URL。</string>
+    <string name="webpage_user_pass_required">用户名和密码为必填项。</string>
+    <string name="webpage_mac_required">MAC 地址为必填项。</string>
+    <string name="webpage_adding">正在添加并加载频道…</string>
+    <string name="webpage_added">已添加——已加载 %1$d 个频道。</string>
+    <string name="webpage_add_failed">无法添加提供商</string>
+    <string name="webpage_err_fill_required">请填写此提供商类型所需的必填项。</string>
+    <string name="webpage_err_save_source">无法保存来源。</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">用于同步的 NAS（SMB）</string>
+    <string name="webpage_nas_hint">你的设备通过这个网络硬盘同步收藏和观看记录。直接保存到你的电视——密码只保留在电视上。</string>
+    <string name="webpage_nas_server">服务器（IP 地址）</string>
+    <string name="webpage_nas_share">共享</string>
+    <string name="webpage_nas_folder">文件夹（可选）</string>
+    <string name="webpage_nas_folder_placeholder">（留空）</string>
+    <string name="webpage_nas_save">保存 NAS</string>
+    <string name="webpage_nas_test">测试连接</string>
+    <string name="webpage_nas_password_unchanged">••••（未更改）</string>
+    <string name="webpage_nas_required">服务器和共享为必填项。</string>
+    <string name="webpage_nas_saving">正在保存并测试…</string>
+    <string name="webpage_nas_connected">已连接到 NAS。✓</string>
+    <string name="webpage_nas_failed">无法连接到 NAS：%1$s</string>
+    <string name="webpage_nas_check_details">请检查详细信息</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">筛选分类…</string>
+    <string name="webpage_no_categories_match">没有匹配的分类。</string>
+    <string name="webpage_no_channels_yet">还没有频道——请在上方添加提供商以开始使用。</string>
+    <string name="webpage_channels_hint">点击名称可重命名。星标收藏，眼睛隐藏，箭头调整顺序。</string>
+    <string name="webpage_channel_number">第 %1$d 号</string>
+    <string name="webpage_hidden_tap_show">已隐藏——点击以显示</string>
+    <string name="webpage_showing_tap_hide">显示中——点击以隐藏</string>
+    <string name="webpage_move_up">上移</string>
+    <string name="webpage_move_down">下移</string>
+    <string name="webpage_favourited">已收藏</string>
+    <string name="webpage_unfavourited">已取消收藏</string>
+    <string name="webpage_hidden_from_guide">已从节目单中隐藏</string>
+    <string name="webpage_showing_in_guide">已在节目单中显示</string>
+    <string name="webpage_renamed">已重命名</string>
+    <string name="webpage_rename_failed">无法保存名称。</string>
+    <string name="webpage_order_saved">已保存顺序</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">设置 OpenTV</string>
+    <string name="pairpage_sub">在这里填写比用遥控器方便得多。</string>
+    <string name="pairpage_kind_xtream">Xtream 登录</string>
+    <string name="pairpage_kind_m3u">M3U 播放列表</string>
+    <string name="pairpage_name_placeholder">客厅的提供商</string>
+    <string name="pairpage_url_hint">如果更方便，可以直接粘贴提供商给你的完整内容——多余部分会自动去除。</string>
+    <string name="pairpage_field_code">电视上显示的代码</string>
+    <string name="pairpage_code_hint">用来证明正在电视机前的人是你。</string>
+    <string name="pairpage_send">发送到电视</string>
+    <string name="pairpage_privacy">此页面由你的电视通过你自己的网络提供。你输入的内容会直接发送给电视，不会发往其他任何地方——没有 OpenTV 账户，也没有 OpenTV 服务器。</string>
+    <string name="pairpage_err_code">该代码与电视上显示的不一致。剩余尝试次数：%1$d。</string>
+    <string name="pairpage_err_url">请填写服务器地址。</string>
+    <string name="pairpage_too_many_title">尝试次数过多</string>
+    <string name="pairpage_too_many_body">请在电视上重新开始配对以获取新代码。</string>
+    <string name="pairpage_sent_title">已发送到你的电视</string>
+    <string name="pairpage_sent_body">你可以放下手机了——剩下的在电视上完成。</string>
 </resources>

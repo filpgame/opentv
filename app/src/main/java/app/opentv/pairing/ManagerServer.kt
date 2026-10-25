@@ -5,7 +5,9 @@
  */
 package app.opentv.pairing
 
+import android.content.Context
 import android.util.Log
+import app.opentv.R
 import app.opentv.core.AppSettings
 import app.opentv.data.model.Channel
 import app.opentv.data.model.Source
@@ -66,6 +68,8 @@ class ManagerServer(
     private val catalog: CatalogRepository,
     private val settings: AppSettings,
     private val sourceRepository: SourceRepository,
+    /** Where the page's strings come from; it is rendered in the browser's language, not the TV's. */
+    private val context: Context,
 ) {
 
     data class Session(
@@ -211,9 +215,13 @@ class ManagerServer(
 
         val body = if (method == "POST") readBody(reader, headers) else ""
 
+        // The browser sends the same Accept-Language with the page and with every fetch the page
+        // makes, so the page and the error messages in the JSON it gets back agree on a language.
+        val text = WebText.forRequest(context, headers["accept-language"])
+
         when {
             method == "GET" && path == "/" ->
-                output.write(PairingHttp.httpResponse("200 OK", "text/html", ManagerPage.page(token)))
+                output.write(PairingHttp.httpResponse("200 OK", "text/html", ManagerPage.page(token, text)))
 
             method == "GET" && path == "/meta" ->
                 output.write(PairingHttp.httpResponse("200 OK", "application/json", metaJson()))
@@ -232,9 +240,9 @@ class ManagerServer(
 
             method == "POST" && path == "/nas/test" -> handleNasTest(output, body)
 
-            method == "POST" && path == "/source" -> handleAddSource(output, body)
+            method == "POST" && path == "/source" -> handleAddSource(output, body, text)
 
-            method == "POST" && path == "/source/test" -> handleTestSource(output, body)
+            method == "POST" && path == "/source/test" -> handleTestSource(output, body, text)
 
             else -> output.write(PairingHttp.httpResponse("404 Not Found", "text/plain", "Not found."))
         }
@@ -377,16 +385,16 @@ class ManagerServer(
      * channels, so the catalogue fills without anyone typing a server address on the TV remote.
      * Mirrors the on-device Add-source screen: save, then load live channels first.
      */
-    private fun handleAddSource(output: OutputStream, body: String) {
+    private fun handleAddSource(output: OutputStream, body: String, text: WebText) {
         val draft = runCatching { json.decodeFromString(SourceReq.serializer(), body) }.getOrNull()?.toDraftOrNull()
         if (draft == null) {
-            writeJson(output, AddResultDto.serializer(), AddResultDto(ok = false, error = "Fill in the required fields for this provider type."))
+            writeJson(output, AddResultDto.serializer(), AddResultDto(ok = false, error = text.get(R.string.webpage_err_fill_required)))
             return
         }
         val result = runBlocking {
             val id = sourceRepository.save(draft)
             val saved = sourceRepository.byId(id)
-                ?: return@runBlocking AddResultDto(ok = false, error = "Could not save the source.")
+                ?: return@runBlocking AddResultDto(ok = false, error = text.get(R.string.webpage_err_save_source))
             when (val r = catalog.syncLive(saved, System.currentTimeMillis())) {
                 is CatalogRepository.SyncResult.Success -> AddResultDto(ok = true, channels = r.channelCount)
                 is CatalogRepository.SyncResult.Failed -> AddResultDto(ok = false, error = r.reason)
@@ -396,17 +404,17 @@ class ManagerServer(
     }
 
     /** `POST /source/test {…}` → validate the provider details without saving (handshake / auth). */
-    private fun handleTestSource(output: OutputStream, body: String) {
+    private fun handleTestSource(output: OutputStream, body: String, text: WebText) {
         val draft = runCatching { json.decodeFromString(SourceReq.serializer(), body) }.getOrNull()?.toDraftOrNull()
         if (draft == null) {
-            writeJson(output, TestResultDto.serializer(), TestResultDto(ok = false, error = "Fill in the required fields for this provider type."))
+            writeJson(output, TestResultDto.serializer(), TestResultDto(ok = false, error = text.get(R.string.webpage_err_fill_required)))
             return
         }
         val result = runBlocking { sourceRepository.test(draft) }
         val dto = if (result.isSuccess) {
             TestResultDto(ok = true, message = result.getOrNull())
         } else {
-            TestResultDto(ok = false, error = result.exceptionOrNull()?.message ?: "Test failed.")
+            TestResultDto(ok = false, error = result.exceptionOrNull()?.message ?: text.get(R.string.webpage_test_failed))
         }
         writeJson(output, TestResultDto.serializer(), dto)
     }

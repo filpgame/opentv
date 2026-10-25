@@ -5,6 +5,10 @@
  */
 package app.opentv.pairing
 
+import app.opentv.R
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
 /**
  * The page a phone or laptop sees when managing channels.
  *
@@ -16,17 +20,25 @@ package app.opentv.pairing
  * touch-friendly rather than TV-styled. All channel data arrives as JSON and is rendered with
  * `textContent`/DOM APIs (never string-built HTML), so a channel name full of `<`, `"`, `|` or
  * emoji can never break out into markup.
+ *
+ * ## Language
+ *
+ * The page is rendered in the browser's language ([WebText]), from the same string resources as the
+ * TV's UI. Static markup is filled in on the server (HTML-escaped); the strings the script needs at
+ * runtime travel as one JSON object, `T`. Translating in the browser instead — shipping every
+ * language and picking one in script — would put 30 copies of the text in each response for the
+ * sake of one.
  */
 object ManagerPage {
 
-    fun page(token: String): String = """
+    fun page(token: String, t: WebText): String = """
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="${t.tag}" dir="${if (t.rtl) "rtl" else "ltr"}">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="robots" content="noindex, nofollow">
-        <title>OpenTV — manage channels</title>
+        <title>${t.html(R.string.webpage_title)}</title>
         <style>
           :root { --bg:#07080c; --surface:#12141d; --surface2:#181b26; --line:#2a2f3d;
                   --text:#e8eaf0; --muted:#a8aec0; --accent:#7c93ff; --accent2:#3a447a;
@@ -90,7 +102,7 @@ object ManagerPage {
           details.rec { background:var(--surface); border:1px solid var(--line); border-radius:12px; margin-bottom:16px; }
           details.rec summary { padding:14px 16px; font-weight:600; cursor:pointer; list-style:none; }
           details.rec summary::-webkit-details-marker { display:none; }
-          details.rec summary::before { content:'\25B8'; color:var(--muted); margin-right:8px; }
+          details.rec summary::before { content:'\25B8'; color:var(--muted); margin-inline-end:8px; }
           details.rec[open] summary::before { content:'\25BE'; }
           details.rec .body { padding:0 16px 16px; }
           .field { display:block; margin:10px 0; }
@@ -101,85 +113,90 @@ object ManagerPage {
           .save { margin-top:6px; padding:12px 18px; font-size:15px; font-weight:600;
                   background:var(--accent2); color:var(--text); border:1px solid var(--accent); border-radius:10px; cursor:pointer; }
           .save:active { transform:scale(.97); }
+          .save.secondary { background:var(--surface2); border-color:var(--line); margin-inline-start:8px; }
           .field select { width:100%; padding:11px 12px; font-size:16px; background:var(--bg); color:var(--text);
                           border:1px solid var(--line); border-radius:9px; }
           .field select:focus { outline:none; border-color:var(--accent); }
           /* `.field { display:block }` above would otherwise override the [hidden] attribute, leaving
              a type's irrelevant fields (e.g. username/password on a Stalker portal) on screen. */
           .field[hidden] { display:none; }
+          /* Right-to-left languages (Arabic, Persian) mirror the layout through dir="rtl" on <html>.
+             What dir cannot mirror is a drawn glyph, so the arrows that mean "forward" and "back"
+             are flipped here. The URL, address and login inputs are dir="ltr" in the markup,
+             because typing http://… into a right-to-left field scrambles it. */
+          [dir=rtl] .chev, [dir=rtl] .backarrow { display:inline-block; transform:scaleX(-1); }
+          [dir=rtl] details.rec summary::before { content:'\25C2'; }
+          [dir=rtl] details.rec[open] summary::before { content:'\25BE'; }
         </style>
         </head>
         <body>
           <div class="wrap">
             <header>
-              <h1>OpenTV — manage channels</h1>
-              <p class="hint">Changes apply to your TV the moment you make them.</p>
+              <h1>${t.html(R.string.webpage_title)}</h1>
+              <p class="hint">${t.html(R.string.webpage_hint)}</p>
             </header>
 
             <details class="rec" id="provCard">
-              <summary>Add a provider</summary>
+              <summary>${t.html(R.string.guide_add_provider_button)}</summary>
               <div class="body">
-                <p class="hint">Add an Xtream, M3U or Stalker portal from here — a real keyboard beats the TV remote. Your login stays on the TV.</p>
-                <label class="field"><span>Type</span>
+                <p class="hint">${t.html(R.string.webpage_prov_hint)}</p>
+                <label class="field"><span>${t.html(R.string.webpage_field_type)}</span>
                   <select id="provKind">
-                    <option value="xtream">Xtream Codes login</option>
-                    <option value="m3u">M3U playlist URL</option>
-                    <option value="stalker">Stalker portal</option>
+                    <option value="xtream">${t.html(R.string.onboarding_xtream_login)}</option>
+                    <option value="m3u">${t.html(R.string.onboarding_m3u_url)}</option>
+                    <option value="stalker">${t.html(R.string.onboarding_stalker_portal)}</option>
                   </select></label>
-                <label class="field"><span>Name (optional)</span>
-                  <input id="provName" placeholder="My provider" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field"><span id="provUrlLabel">Server address</span>
-                  <input id="provUrl" placeholder="http://example.com:8080" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field" id="provUserField"><span>Username</span>
-                  <input id="provUser" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field" id="provPassField"><span>Password</span>
-                  <input id="provPass" type="password" autocomplete="off"></label>
-                <label class="field" id="provMacField"><span>MAC address</span>
-                  <input id="provMac" placeholder="00:1A:79:xx:xx:xx" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <button class="save" id="provSave">Add &amp; load channels</button>
-                <button class="save" id="provTest" style="background:var(--surface2);border-color:var(--line);margin-left:8px;">Test</button>
+                <label class="field"><span>${t.html(R.string.webpage_field_name_optional)}</span>
+                  <input id="provName" placeholder="${t.html(R.string.webpage_prov_name_placeholder)}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field"><span id="provUrlLabel">${t.html(R.string.onboarding_server_address)}</span>
+                  <input id="provUrl" dir="ltr" placeholder="http://example.com:8080" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field" id="provUserField"><span>${t.html(R.string.webpage_field_username)}</span>
+                  <input id="provUser" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field" id="provPassField"><span>${t.html(R.string.webpage_field_password)}</span>
+                  <input id="provPass" dir="ltr" type="password" autocomplete="off"></label>
+                <label class="field" id="provMacField"><span>${t.html(R.string.onboarding_mac_address)}</span>
+                  <input id="provMac" dir="ltr" placeholder="00:1A:79:xx:xx:xx" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <button class="save" id="provSave">${t.html(R.string.webpage_prov_add)}</button>
+                <button class="save secondary" id="provTest">${t.html(R.string.webpage_test)}</button>
               </div>
             </details>
 
             <details class="rec" id="nasCard">
-              <summary>NAS (SMB) for sync</summary>
+              <summary>${t.html(R.string.webpage_nas_title)}</summary>
               <div class="body">
-                <p class="hint">The network drive your devices sync favourites and watch history through. Saved straight to your TV — the password stays on the TV.</p>
-                <label class="field"><span>Server (IP address)</span>
-                  <input id="nasHost" placeholder="192.168.0.214" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field"><span>Share</span>
-                  <input id="nasShare" placeholder="OpenTV" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field"><span>Folder (optional)</span>
-                  <input id="nasFolder" placeholder="(leave blank)" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field"><span>Username</span>
-                  <input id="nasUser" placeholder="opentv" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-                <label class="field"><span>Password</span>
-                  <input id="nasPass" type="password" autocomplete="off"></label>
-                <button class="save" id="nasSave">Save NAS</button>
-                <button class="save" id="nasTest" style="background:var(--surface2);border-color:var(--line);margin-left:8px;">Test connection</button>
+                <p class="hint">${t.html(R.string.webpage_nas_hint)}</p>
+                <label class="field"><span>${t.html(R.string.webpage_nas_server)}</span>
+                  <input id="nasHost" dir="ltr" placeholder="192.168.0.214" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field"><span>${t.html(R.string.webpage_nas_share)}</span>
+                  <input id="nasShare" dir="ltr" placeholder="OpenTV" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field"><span>${t.html(R.string.webpage_nas_folder)}</span>
+                  <input id="nasFolder" dir="ltr" placeholder="${t.html(R.string.webpage_nas_folder_placeholder)}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field"><span>${t.html(R.string.webpage_field_username)}</span>
+                  <input id="nasUser" dir="ltr" placeholder="opentv" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                <label class="field"><span>${t.html(R.string.webpage_field_password)}</span>
+                  <input id="nasPass" dir="ltr" type="password" autocomplete="off"></label>
+                <button class="save" id="nasSave">${t.html(R.string.webpage_nas_save)}</button>
+                <button class="save secondary" id="nasTest">${t.html(R.string.webpage_nas_test)}</button>
               </div>
             </details>
 
             <section id="catView">
               <div id="srcBar" class="chips" hidden></div>
-              <input id="catSearch" class="search" type="text" placeholder="Filter categories…"
+              <input id="catSearch" class="search" type="text" placeholder="${t.html(R.string.webpage_filter_placeholder)}"
                      autocapitalize="off" autocorrect="off" spellcheck="false">
               <div id="catList" class="list"></div>
               <div id="catEmpty" class="empty" hidden></div>
             </section>
 
             <section id="chanView" hidden>
-              <div id="back" class="back">&#8249;&nbsp;Categories</div>
+              <div id="back" class="back"><span class="backarrow">&#8249;</span>&nbsp;${t.html(R.string.channels_manager_categories_header)}</div>
               <h2 id="chanHead" class="chanhead"></h2>
-              <p class="hint" id="chanHint">Tap a name to rename. Star to favourite, eye to hide, arrows to reorder.</p>
+              <p class="hint" id="chanHint">${t.html(R.string.webpage_channels_hint)}</p>
               <div id="chanList" class="list"></div>
               <div id="chanEmpty" class="empty" hidden></div>
             </section>
 
-            <p class="privacy">
-              This page is served by your television, over your own network — there is no OpenTV
-              account and no OpenTV server. Nothing you change here leaves your home.
-            </p>
+            <p class="privacy">${t.html(R.string.webpage_privacy)}</p>
           </div>
 
           <div id="status"></div>
@@ -187,6 +204,11 @@ object ManagerPage {
         <script>
           var EMBEDDED_TOKEN = "$token";
           var token = new URLSearchParams(location.search).get('t') || EMBEDDED_TOKEN;
+
+          // Every string the script shows, already in the page's language. fmt() fills the
+          // positional placeholders (%1${'$'}d, %1${'$'}s) that the same Android resources use on the TV.
+          var T = ${dictionary(t)};
+          function fmt(s){ var a = arguments; return s.replace(/%(\d+)[$][sd]/g, function(_, n){ return a[+n]; }); }
 
           var meta = { sources: [], categories: [] };
           var currentSource = null;   // selected source filter, null = all
@@ -217,7 +239,7 @@ object ManagerPage {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
           }
-          var UNREACH = "Couldn't reach the TV — still on the same wifi?";
+          var UNREACH = T.unreachable;
 
           // ---- Categories --------------------------------------------------------------------
           async function loadMeta(){
@@ -243,7 +265,7 @@ object ManagerPage {
               c.onclick = function(){ currentSource = id; renderSources(); renderCategories(); };
               bar.appendChild(c);
             };
-            mk('All sources', null);
+            mk(T.all_sources, null);
             meta.sources.forEach(function(s){ mk(s.name, s.id); });
           }
 
@@ -259,7 +281,7 @@ object ManagerPage {
             var empty = el('catEmpty');
             if (cats.length === 0) {
               empty.hidden = false;
-              empty.textContent = (meta.categories && meta.categories.length) ? 'No categories match that.' : 'No channels yet — add a provider above to get started.';
+              empty.textContent = (meta.categories && meta.categories.length) ? T.no_categories_match : T.no_channels_yet;
               return;
             }
             empty.hidden = true;
@@ -303,7 +325,7 @@ object ManagerPage {
             var listEl = el('chanList');
             listEl.innerHTML = '';
             var empty = el('chanEmpty');
-            if (!channels.length) { empty.hidden = false; empty.textContent = 'No channels in this category.'; return; }
+            if (!channels.length) { empty.hidden = false; empty.textContent = T.empty_category; return; }
             empty.hidden = true;
             channels.forEach(function(c, i){ listEl.appendChild(buildRow(c, i)); });
           }
@@ -325,11 +347,11 @@ object ManagerPage {
             function refreshSub(){
               sub.innerHTML = '';
               if (c.number !== null && c.number !== undefined) {
-                sub.appendChild(document.createTextNode('No. ' + c.number));
+                sub.appendChild(document.createTextNode(fmt(T.channel_number, c.number)));
               }
               if (c.hidden) {
                 if (sub.childNodes.length) sub.appendChild(document.createTextNode('  ·  '));
-                var b = document.createElement('span'); b.className = 'badge'; b.textContent = 'Hidden';
+                var b = document.createElement('span'); b.className = 'badge'; b.textContent = T.hidden;
                 sub.appendChild(b);
               }
               if (!sub.childNodes.length) sub.textContent = c.original !== c.name ? c.original : ' ';
@@ -341,18 +363,18 @@ object ManagerPage {
             var star = document.createElement('div');
             star.className = 'btn star' + (c.favourite ? ' on' : '');
             star.innerHTML = c.favourite ? '&#9733;' : '&#9734;';
-            star.title = 'Favourite';
+            star.title = T.favourite;
             star.onclick = function(){
               var target = !c.favourite;
               post('/channel', { id: c.id, favourite: target })
-                .then(function(){ c.favourite = target; star.className = 'btn star' + (target ? ' on' : ''); star.innerHTML = target ? '&#9733;' : '&#9734;'; setStatus(target ? 'Favourited' : 'Unfavourited', 'ok'); })
+                .then(function(){ c.favourite = target; star.className = 'btn star' + (target ? ' on' : ''); star.innerHTML = target ? '&#9733;' : '&#9734;'; setStatus(target ? T.favourited : T.unfavourited, 'ok'); })
                 .catch(function(){ setStatus(UNREACH, 'err'); });
             };
 
             var eye = document.createElement('div');
             eye.className = 'btn eye' + (c.hidden ? '' : ' on');
             eye.innerHTML = c.hidden ? '&#128584;' : '&#128065;';
-            eye.title = c.hidden ? 'Hidden — tap to show' : 'Showing — tap to hide';
+            eye.title = c.hidden ? T.hidden_tap_show : T.showing_tap_hide;
             eye.onclick = function(){
               var target = !c.hidden;
               post('/channel', { id: c.id, hidden: target })
@@ -361,20 +383,20 @@ object ManagerPage {
                   row.className = 'row' + (target ? ' hidden' : '');
                   eye.className = 'btn eye' + (target ? '' : ' on');
                   eye.innerHTML = target ? '&#128584;' : '&#128065;';
-                  eye.title = target ? 'Hidden — tap to show' : 'Showing — tap to hide';
+                  eye.title = target ? T.hidden_tap_show : T.showing_tap_hide;
                   refreshSub();
-                  setStatus(target ? 'Hidden from the guide' : 'Showing in the guide', 'ok');
+                  setStatus(target ? T.hidden_from_guide : T.showing_in_guide, 'ok');
                 })
                 .catch(function(){ setStatus(UNREACH, 'err'); });
             };
 
             var up = document.createElement('div');
-            up.className = 'btn mv'; up.innerHTML = '&#9650;'; up.title = 'Move up';
+            up.className = 'btn mv'; up.innerHTML = '&#9650;'; up.title = T.move_up;
             if (index === 0) up.setAttribute('disabled', '');
             up.onclick = function(){ move(index, index - 1); };
 
             var down = document.createElement('div');
-            down.className = 'btn mv'; down.innerHTML = '&#9660;'; down.title = 'Move down';
+            down.className = 'btn mv'; down.innerHTML = '&#9660;'; down.title = T.move_down;
             if (index === channels.length - 1) down.setAttribute('disabled', '');
             down.onclick = function(){ move(index, index + 1); };
 
@@ -394,8 +416,8 @@ object ManagerPage {
               if (save) {
                 c.name = val || c.original;
                 post('/channel', { id: c.id, name: val })
-                  .then(function(){ setStatus('Renamed', 'ok'); })
-                  .catch(function(){ setStatus("Couldn't save the name.", 'err'); });
+                  .then(function(){ setStatus(T.renamed, 'ok'); })
+                  .catch(function(){ setStatus(T.rename_failed, 'err'); });
               }
               var fresh = document.createElement('span');
               fresh.className = 'name'; fresh.textContent = c.name;
@@ -415,7 +437,7 @@ object ManagerPage {
             channels.splice(to, 0, item);
             renderChannels();
             post('/reorder', { ids: channels.map(function(c){ return c.id; }) })
-              .then(function(){ setStatus('Order saved', 'ok'); })
+              .then(function(){ setStatus(T.order_saved, 'ok'); })
               .catch(function(){ setStatus(UNREACH, 'err'); });
           }
 
@@ -427,7 +449,7 @@ object ManagerPage {
               el('nasShare').value = r.share || '';
               el('nasFolder').value = r.folder || '';
               el('nasUser').value = r.user || '';
-              el('nasPass').placeholder = r.hasPassword ? '•••• (unchanged)' : '';
+              el('nasPass').placeholder = r.hasPassword ? T.nas_password_unchanged : '';
               if (r.host) el('nasCard').open = true;
             } catch (e) { /* leave the form blank if the TV can't be reached yet */ }
           }
@@ -441,24 +463,24 @@ object ManagerPage {
             };
           }
           function showTest(r){
-            if (r && r.ok) setStatus('Connected to the NAS. ✓', 'ok');
-            else setStatus("Couldn't reach the NAS: " + ((r && r.error) || 'check the details') , 'err');
+            if (r && r.ok) setStatus(T.nas_connected, 'ok');
+            else setStatus(fmt(T.nas_failed, (r && r.error) || T.nas_check_details), 'err');
           }
           el('nasSave').onclick = function(){
             var body = smbBody();
-            if (!body.host || !body.share) { setStatus('Server and share are required.', 'err'); return; }
-            setStatus('Saving & testing…');
+            if (!body.host || !body.share) { setStatus(T.nas_required, 'err'); return; }
+            setStatus(T.nas_saving);
             post('/nas', body)
               .then(function(){
                 el('nasPass').value = '';
-                el('nasPass').placeholder = '•••• (unchanged)';
+                el('nasPass').placeholder = T.nas_password_unchanged;
                 return post('/nas/test', {});   // test the settings we just stored
               })
               .then(showTest)
               .catch(function(){ setStatus(UNREACH, 'err'); });
           };
           el('nasTest').onclick = function(){
-            setStatus('Testing…');
+            setStatus(T.testing);
             post('/nas/test', smbBody())
               .then(showTest)
               .catch(function(){ setStatus(UNREACH, 'err'); });
@@ -471,7 +493,7 @@ object ManagerPage {
             el('provUserField').hidden = (k !== 'xtream');
             el('provPassField').hidden = (k !== 'xtream');
             el('provMacField').hidden = (k !== 'stalker');
-            el('provUrlLabel').textContent = (k === 'm3u') ? 'Playlist URL' : (k === 'stalker' ? 'Portal URL' : 'Server address');
+            el('provUrlLabel').textContent = (k === 'm3u') ? T.playlist_url : (k === 'stalker' ? T.portal_url : T.server_address);
             el('provUrl').placeholder = (k === 'm3u') ? 'http://example.com/playlist.m3u'
               : (k === 'stalker' ? 'http://portal.example.com:80/c' : 'http://example.com:8080');
           }
@@ -483,29 +505,29 @@ object ManagerPage {
                      username: el('provUser').value.trim(), password: el('provPass').value, mac: el('provMac').value.trim() };
           }
           function provInvalid(b){
-            if (!b.url) return 'Enter the URL.';
-            if (b.kind === 'xtream' && (!b.username || !b.password)) return 'Username and password are required.';
-            if (b.kind === 'stalker' && !b.mac) return 'A MAC address is required.';
+            if (!b.url) return T.enter_url;
+            if (b.kind === 'xtream' && (!b.username || !b.password)) return T.user_pass_required;
+            if (b.kind === 'stalker' && !b.mac) return T.mac_required;
             return null;
           }
           el('provTest').onclick = function(){
             var b = provBody(); var bad = provInvalid(b); if (bad){ setStatus(bad, 'err'); return; }
-            setStatus('Testing…');
+            setStatus(T.testing);
             post('/source/test', b)
-              .then(function(r){ if (r && r.ok) setStatus(r.message || 'Looks good.', 'ok'); else setStatus((r && r.error) || 'Test failed', 'err'); })
+              .then(function(r){ if (r && r.ok) setStatus(r.message || T.test_ok_default, 'ok'); else setStatus((r && r.error) || T.test_failed, 'err'); })
               .catch(function(){ setStatus(UNREACH, 'err'); });
           };
           el('provSave').onclick = function(){
             var b = provBody(); var bad = provInvalid(b); if (bad){ setStatus(bad, 'err'); return; }
-            setStatus('Adding & loading channels…');
+            setStatus(T.adding);
             post('/source', b)
               .then(function(r){
                 if (r && r.ok){
-                  setStatus('Added — ' + (r.channels || 0) + ' channels loaded.', 'ok');
+                  setStatus(fmt(T.added, r.channels || 0), 'ok');
                   el('provUrl').value = ''; el('provUser').value = ''; el('provPass').value = '';
                   el('provMac').value = ''; el('provName').value = '';
                   loadMeta();
-                } else setStatus((r && r.error) || 'Could not add the provider', 'err');
+                } else setStatus((r && r.error) || T.add_failed, 'err');
               })
               .catch(function(){ setStatus(UNREACH, 'err'); });
           };
@@ -516,4 +538,61 @@ object ManagerPage {
         </body>
         </html>
     """.trimIndent()
+
+    private const val BACKSLASH = "\\"
+
+    /**
+     * Makes a JSON text safe to sit inside a `<script>` block. Every `<` becomes a unicode escape,
+     * so no string — however a translator words it — can contain `</script>` and end the block
+     * early. The line and paragraph separators (U+2028/2029) are escaped too: they are legal in
+     * JSON but were line terminators inside a JavaScript string for a long time.
+     */
+    internal fun escapeForScript(json: String): String = json
+        .replace("<", BACKSLASH + "u003c")
+        .replace(Char(0x2028).toString(), BACKSLASH + "u2028")
+        .replace(Char(0x2029).toString(), BACKSLASH + "u2029")
+
+    /**
+     * The strings the script needs, as a JSON object literal. Built with a JSON encoder so quotes,
+     * backslashes and newlines in a translation cannot break the literal.
+     */
+    private fun dictionary(t: WebText): String = escapeForScript(buildJsonObject {
+        put("unreachable", t.get(R.string.webpage_unreachable))
+        put("all_sources", t.get(R.string.channels_manager_all_sources))
+        put("no_categories_match", t.get(R.string.webpage_no_categories_match))
+        put("no_channels_yet", t.get(R.string.webpage_no_channels_yet))
+        put("empty_category", t.get(R.string.channels_manager_empty_category))
+        put("channel_number", t.get(R.string.webpage_channel_number))
+        put("hidden", t.get(R.string.channels_hidden))
+        put("favourite", t.get(R.string.common_favourite))
+        put("hidden_tap_show", t.get(R.string.webpage_hidden_tap_show))
+        put("showing_tap_hide", t.get(R.string.webpage_showing_tap_hide))
+        put("move_up", t.get(R.string.webpage_move_up))
+        put("move_down", t.get(R.string.webpage_move_down))
+        put("favourited", t.get(R.string.webpage_favourited))
+        put("unfavourited", t.get(R.string.webpage_unfavourited))
+        put("hidden_from_guide", t.get(R.string.webpage_hidden_from_guide))
+        put("showing_in_guide", t.get(R.string.webpage_showing_in_guide))
+        put("renamed", t.get(R.string.webpage_renamed))
+        put("rename_failed", t.get(R.string.webpage_rename_failed))
+        put("order_saved", t.get(R.string.webpage_order_saved))
+        put("nas_password_unchanged", t.get(R.string.webpage_nas_password_unchanged))
+        put("nas_connected", t.get(R.string.webpage_nas_connected))
+        put("nas_failed", t.get(R.string.webpage_nas_failed))
+        put("nas_check_details", t.get(R.string.webpage_nas_check_details))
+        put("nas_required", t.get(R.string.webpage_nas_required))
+        put("nas_saving", t.get(R.string.webpage_nas_saving))
+        put("testing", t.get(R.string.webpage_testing))
+        put("server_address", t.get(R.string.onboarding_server_address))
+        put("playlist_url", t.get(R.string.onboarding_playlist_url))
+        put("portal_url", t.get(R.string.onboarding_portal_url))
+        put("enter_url", t.get(R.string.webpage_enter_url))
+        put("user_pass_required", t.get(R.string.webpage_user_pass_required))
+        put("mac_required", t.get(R.string.webpage_mac_required))
+        put("test_ok_default", t.get(R.string.webpage_test_ok_default))
+        put("test_failed", t.get(R.string.webpage_test_failed))
+        put("adding", t.get(R.string.webpage_adding))
+        put("added", t.get(R.string.webpage_added))
+        put("add_failed", t.get(R.string.webpage_add_failed))
+    }.toString())
 }

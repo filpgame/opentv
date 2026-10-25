@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Spremi ključ</string>
     <string name="settings_tmdb_saved">TMDB ključ spremljen</string>
     <string name="settings_tmdb_active">Aktivan</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — upravljanje kanalima</string>
+    <string name="webpage_hint">Promjene se odmah primjenjuju na vašem televizoru.</string>
+    <string name="webpage_unreachable">Nije moguće doći do televizora — jeste li još na istoj Wi-Fi mreži?</string>
+    <string name="webpage_privacy">Ovu stranicu poslužuje vaš televizor putem vaše vlastite mreže — ne postoji OpenTV račun niti OpenTV poslužitelj. Ništa što ovdje promijenite ne napušta vaš dom.</string>
+    <string name="webpage_field_type">Vrsta</string>
+    <string name="webpage_field_name_optional">Naziv (neobavezno)</string>
+    <string name="webpage_field_username">Korisničko ime</string>
+    <string name="webpage_field_password">Lozinka</string>
+    <string name="webpage_test">Testiraj</string>
+    <string name="webpage_testing">Testiranje…</string>
+    <string name="webpage_test_failed">Test nije uspio</string>
+    <string name="webpage_test_ok_default">Sve izgleda dobro.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Ovdje dodajte Xtream, M3U ili Stalker portal — prava tipkovnica je praktičnija od daljinskog upravljača. Vaši podaci za prijavu ostaju na televizoru.</string>
+    <string name="webpage_prov_name_placeholder">Moj pružatelj usluge</string>
+    <string name="webpage_prov_add">Dodaj i učitaj kanale</string>
+    <string name="webpage_enter_url">Unesite URL.</string>
+    <string name="webpage_user_pass_required">Korisničko ime i lozinka su obavezni.</string>
+    <string name="webpage_mac_required">MAC adresa je obavezna.</string>
+    <string name="webpage_adding">Dodavanje i učitavanje kanala…</string>
+    <string name="webpage_added">Dodano — učitanih kanala: %1$d.</string>
+    <string name="webpage_add_failed">Nije moguće dodati pružatelja usluge</string>
+    <string name="webpage_err_fill_required">Ispunite obavezna polja za ovu vrstu pružatelja usluge.</string>
+    <string name="webpage_err_save_source">Nije moguće spremiti izvor.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) za sinkronizaciju</string>
+    <string name="webpage_nas_hint">Mrežni disk putem kojeg vaši uređaji sinkroniziraju favorite i povijest gledanja. Sprema se izravno na televizor — lozinka ostaje na televizoru.</string>
+    <string name="webpage_nas_server">Poslužitelj (IP adresa)</string>
+    <string name="webpage_nas_share">Dijeljena mapa</string>
+    <string name="webpage_nas_folder">Mapa (neobavezno)</string>
+    <string name="webpage_nas_folder_placeholder">(ostavite prazno)</string>
+    <string name="webpage_nas_save">Spremi NAS</string>
+    <string name="webpage_nas_test">Testiraj vezu</string>
+    <string name="webpage_nas_password_unchanged">•••• (nepromijenjeno)</string>
+    <string name="webpage_nas_required">Poslužitelj i dijeljena mapa su obavezni.</string>
+    <string name="webpage_nas_saving">Spremanje i testiranje…</string>
+    <string name="webpage_nas_connected">Povezano s NAS-om. ✓</string>
+    <string name="webpage_nas_failed">Nije moguće povezati se s NAS-om: %1$s</string>
+    <string name="webpage_nas_check_details">provjerite podatke</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Filtriraj kategorije…</string>
+    <string name="webpage_no_categories_match">Nijedna kategorija ne odgovara.</string>
+    <string name="webpage_no_channels_yet">Još nema kanala — dodajte pružatelja usluge iznad da biste započeli.</string>
+    <string name="webpage_channels_hint">Dodirnite naziv za preimenovanje. Zvjezdica – favorit, oko – sakrij, strelice – promijeni redoslijed.</string>
+    <string name="webpage_channel_number">Br. %1$d</string>
+    <string name="webpage_hidden_tap_show">Skriven — dodirnite za prikaz</string>
+    <string name="webpage_showing_tap_hide">Prikazan — dodirnite za skrivanje</string>
+    <string name="webpage_move_up">Pomakni gore</string>
+    <string name="webpage_move_down">Pomakni dolje</string>
+    <string name="webpage_favourited">Dodano u favorite</string>
+    <string name="webpage_unfavourited">Uklonjeno iz favorita</string>
+    <string name="webpage_hidden_from_guide">Skriveno iz vodiča</string>
+    <string name="webpage_showing_in_guide">Prikazano u vodiču</string>
+    <string name="webpage_renamed">Preimenovano</string>
+    <string name="webpage_rename_failed">Nije moguće spremiti naziv.</string>
+    <string name="webpage_order_saved">Redoslijed spremljen</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Postavite OpenTV</string>
+    <string name="pairpage_sub">Ovdje je ispunjavanje praktičnije nego daljinskim upravljačem.</string>
+    <string name="pairpage_kind_xtream">Xtream prijava</string>
+    <string name="pairpage_kind_m3u">M3U playlista</string>
+    <string name="pairpage_name_placeholder">Pružatelj usluge za dnevni boravak</string>
+    <string name="pairpage_url_hint">Zalijepite cijeli redak od pružatelja usluge ako vam je tako lakše — višak će se izrezati.</string>
+    <string name="pairpage_field_code">Kod prikazan na TV-u</string>
+    <string name="pairpage_code_hint">Tako znamo da pred televizorom doista stojite vi.</string>
+    <string name="pairpage_send">Pošalji na TV</string>
+    <string name="pairpage_privacy">Ovu stranicu poslužuje vaš televizor putem vaše vlastite mreže. Sve što upišete ide izravno na njega i nigdje drugdje — ne postoji OpenTV račun niti OpenTV poslužitelj.</string>
+    <string name="pairpage_err_code">Kod se ne podudara s kodom na TV-u. Preostali pokušaji: %1$d.</string>
+    <string name="pairpage_err_url">Unesite adresu poslužitelja.</string>
+    <string name="pairpage_too_many_title">Previše pokušaja</string>
+    <string name="pairpage_too_many_body">Ponovno pokrenite uparivanje na TV-u kako biste dobili novi kod.</string>
+    <string name="pairpage_sent_title">Poslano na TV</string>
+    <string name="pairpage_sent_body">Možete odložiti telefon — ostalo se događa na TV-u.</string>
 </resources>

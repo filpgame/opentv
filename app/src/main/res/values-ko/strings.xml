@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">키 저장</string>
     <string name="settings_tmdb_saved">TMDB 키가 저장되었습니다</string>
     <string name="settings_tmdb_active">활성</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV - 채널 관리</string>
+    <string name="webpage_hint">변경 사항은 적용하는 즉시 TV에 반영됩니다.</string>
+    <string name="webpage_unreachable">TV에 연결하지 못했습니다 - 같은 Wi-Fi에 연결되어 있나요?</string>
+    <string name="webpage_privacy">이 페이지는 TV가 사용자의 네트워크를 통해 제공합니다. OpenTV 계정도, OpenTV 서버도 없습니다. 여기서 바꾼 내용은 집 밖으로 나가지 않습니다.</string>
+    <string name="webpage_field_type">유형</string>
+    <string name="webpage_field_name_optional">이름(선택 사항)</string>
+    <string name="webpage_field_username">사용자 이름</string>
+    <string name="webpage_field_password">비밀번호</string>
+    <string name="webpage_test">테스트</string>
+    <string name="webpage_testing">테스트 중…</string>
+    <string name="webpage_test_failed">테스트 실패</string>
+    <string name="webpage_test_ok_default">이상 없습니다.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">여기서 Xtream, M3U 또는 Stalker 포털을 추가하세요. 실제 키보드가 TV 리모컨보다 훨씬 편합니다. 로그인 정보는 TV에만 저장됩니다.</string>
+    <string name="webpage_prov_name_placeholder">내 공급자</string>
+    <string name="webpage_prov_add">추가하고 채널 불러오기</string>
+    <string name="webpage_enter_url">URL을 입력하세요.</string>
+    <string name="webpage_user_pass_required">사용자 이름과 비밀번호를 입력해야 합니다.</string>
+    <string name="webpage_mac_required">MAC 주소를 입력해야 합니다.</string>
+    <string name="webpage_adding">추가하고 채널을 불러오는 중…</string>
+    <string name="webpage_added">추가됨 - 채널 %1$d개를 불러왔습니다.</string>
+    <string name="webpage_add_failed">공급자를 추가하지 못했습니다</string>
+    <string name="webpage_err_fill_required">이 공급자 유형에 필요한 항목을 입력하세요.</string>
+    <string name="webpage_err_save_source">소스를 저장하지 못했습니다.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">동기화용 NAS(SMB)</string>
+    <string name="webpage_nas_hint">기기들이 즐겨찾기와 시청 기록을 동기화하는 네트워크 드라이브입니다. TV에 바로 저장되며 비밀번호는 TV에만 보관됩니다.</string>
+    <string name="webpage_nas_server">서버(IP 주소)</string>
+    <string name="webpage_nas_share">공유</string>
+    <string name="webpage_nas_folder">폴더(선택 사항)</string>
+    <string name="webpage_nas_folder_placeholder">(비워 두세요)</string>
+    <string name="webpage_nas_save">NAS 저장</string>
+    <string name="webpage_nas_test">연결 테스트</string>
+    <string name="webpage_nas_password_unchanged">•••• (변경 없음)</string>
+    <string name="webpage_nas_required">서버와 공유를 입력해야 합니다.</string>
+    <string name="webpage_nas_saving">저장하고 테스트하는 중…</string>
+    <string name="webpage_nas_connected">NAS에 연결되었습니다. ✓</string>
+    <string name="webpage_nas_failed">NAS에 연결하지 못했습니다: %1$s</string>
+    <string name="webpage_nas_check_details">세부 정보를 확인하세요</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">카테고리 필터…</string>
+    <string name="webpage_no_categories_match">일치하는 카테고리가 없습니다.</string>
+    <string name="webpage_no_channels_yet">아직 채널이 없습니다 - 위에서 공급자를 추가해 시작하세요.</string>
+    <string name="webpage_channels_hint">이름을 탭하면 이름을 변경할 수 있습니다. 별은 즐겨찾기, 눈은 숨김, 화살표는 순서 변경입니다.</string>
+    <string name="webpage_channel_number">%1$d번</string>
+    <string name="webpage_hidden_tap_show">숨김 - 탭하여 표시</string>
+    <string name="webpage_showing_tap_hide">표시 중 - 탭하여 숨기기</string>
+    <string name="webpage_move_up">위로 이동</string>
+    <string name="webpage_move_down">아래로 이동</string>
+    <string name="webpage_favourited">즐겨찾기에 추가됨</string>
+    <string name="webpage_unfavourited">즐겨찾기에서 제거됨</string>
+    <string name="webpage_hidden_from_guide">편성표에서 숨김</string>
+    <string name="webpage_showing_in_guide">편성표에 표시됨</string>
+    <string name="webpage_renamed">이름이 변경되었습니다</string>
+    <string name="webpage_rename_failed">이름을 저장하지 못했습니다.</string>
+    <string name="webpage_order_saved">순서가 저장되었습니다</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">OpenTV 설정</string>
+    <string name="pairpage_sub">리모컨보다 여기서 입력하는 편이 훨씬 편합니다.</string>
+    <string name="pairpage_kind_xtream">Xtream 로그인</string>
+    <string name="pairpage_kind_m3u">M3U 재생 목록</string>
+    <string name="pairpage_name_placeholder">거실 공급자</string>
+    <string name="pairpage_url_hint">편하다면 공급자가 제공한 전체 내용을 그대로 붙여넣어도 됩니다. 불필요한 부분은 자동으로 제거됩니다.</string>
+    <string name="pairpage_field_code">TV에 표시된 코드</string>
+    <string name="pairpage_code_hint">TV 앞에 있는 사람이 본인임을 확인하기 위한 코드입니다.</string>
+    <string name="pairpage_send">TV로 보내기</string>
+    <string name="pairpage_privacy">이 페이지는 TV가 사용자의 네트워크를 통해 제공합니다. 입력한 내용은 TV로 바로 전송되며 다른 곳으로는 전달되지 않습니다. OpenTV 계정도, OpenTV 서버도 없습니다.</string>
+    <string name="pairpage_err_code">입력한 코드가 TV에 표시된 코드와 일치하지 않습니다. 남은 시도: %1$d회.</string>
+    <string name="pairpage_err_url">서버 주소를 입력하세요.</string>
+    <string name="pairpage_too_many_title">시도 횟수 초과</string>
+    <string name="pairpage_too_many_body">TV에서 페어링을 다시 시작해 새 코드를 받으세요.</string>
+    <string name="pairpage_sent_title">TV로 보냈습니다</string>
+    <string name="pairpage_sent_body">이제 휴대폰은 내려놓으셔도 됩니다 - 나머지는 TV에서 진행됩니다.</string>
 </resources>

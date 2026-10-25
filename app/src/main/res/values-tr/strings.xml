@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Anahtarı kaydet</string>
     <string name="settings_tmdb_saved">TMDB anahtarı kaydedildi</string>
     <string name="settings_tmdb_active">Aktif</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — kanalları yönet</string>
+    <string name="webpage_hint">Değişiklikler yaptığınız anda TV\'nize uygulanır.</string>
+    <string name="webpage_unreachable">TV\'ye ulaşılamadı — hâlâ aynı Wi-Fi\'de misiniz?</string>
+    <string name="webpage_privacy">Bu sayfayı televizyonunuz kendi ağınız üzerinden sunar — OpenTV hesabı ya da OpenTV sunucusu yoktur. Burada yaptığınız hiçbir değişiklik evinizden çıkmaz.</string>
+    <string name="webpage_field_type">Tür</string>
+    <string name="webpage_field_name_optional">Ad (isteğe bağlı)</string>
+    <string name="webpage_field_username">Kullanıcı adı</string>
+    <string name="webpage_field_password">Parola</string>
+    <string name="webpage_test">Test et</string>
+    <string name="webpage_testing">Test ediliyor…</string>
+    <string name="webpage_test_failed">Test başarısız</string>
+    <string name="webpage_test_ok_default">Her şey yolunda görünüyor.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Buradan bir Xtream, M3U veya Stalker portalı ekleyin — gerçek bir klavye TV kumandasından çok daha rahat. Giriş bilgileriniz TV\'de kalır.</string>
+    <string name="webpage_prov_name_placeholder">Sağlayıcım</string>
+    <string name="webpage_prov_add">Ekle ve kanalları yükle</string>
+    <string name="webpage_enter_url">URL\'yi girin.</string>
+    <string name="webpage_user_pass_required">Kullanıcı adı ve parola gerekli.</string>
+    <string name="webpage_mac_required">MAC adresi gerekli.</string>
+    <string name="webpage_adding">Ekleniyor ve kanallar yükleniyor…</string>
+    <string name="webpage_added">Eklendi — %1$d kanal yüklendi.</string>
+    <string name="webpage_add_failed">Sağlayıcı eklenemedi</string>
+    <string name="webpage_err_fill_required">Bu sağlayıcı türü için gerekli alanları doldurun.</string>
+    <string name="webpage_err_save_source">Kaynak kaydedilemedi.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">Senkronizasyon için NAS (SMB)</string>
+    <string name="webpage_nas_hint">Cihazlarınızın favorileri ve izleme geçmişini senkronize etmek için kullandığı ağ sürücüsü. Doğrudan TV\'nize kaydedilir — parola TV\'de kalır.</string>
+    <string name="webpage_nas_server">Sunucu (IP adresi)</string>
+    <string name="webpage_nas_share">Paylaşım</string>
+    <string name="webpage_nas_folder">Klasör (isteğe bağlı)</string>
+    <string name="webpage_nas_folder_placeholder">(boş bırakın)</string>
+    <string name="webpage_nas_save">NAS\'ı kaydet</string>
+    <string name="webpage_nas_test">Bağlantıyı test et</string>
+    <string name="webpage_nas_password_unchanged">•••• (değişmedi)</string>
+    <string name="webpage_nas_required">Sunucu ve paylaşım gerekli.</string>
+    <string name="webpage_nas_saving">Kaydediliyor ve test ediliyor…</string>
+    <string name="webpage_nas_connected">NAS\'a bağlanıldı. ✓</string>
+    <string name="webpage_nas_failed">NAS\'a ulaşılamadı: %1$s</string>
+    <string name="webpage_nas_check_details">bilgileri kontrol edin</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Kategorileri filtrele…</string>
+    <string name="webpage_no_categories_match">Eşleşen kategori yok.</string>
+    <string name="webpage_no_channels_yet">Henüz kanal yok — başlamak için yukarıdan bir sağlayıcı ekleyin.</string>
+    <string name="webpage_channels_hint">Yeniden adlandırmak için bir ada dokunun. Favori için yıldız, gizlemek için göz, sıralamak için oklar.</string>
+    <string name="webpage_channel_number">No: %1$d</string>
+    <string name="webpage_hidden_tap_show">Gizli — göstermek için dokunun</string>
+    <string name="webpage_showing_tap_hide">Gösteriliyor — gizlemek için dokunun</string>
+    <string name="webpage_move_up">Yukarı taşı</string>
+    <string name="webpage_move_down">Aşağı taşı</string>
+    <string name="webpage_favourited">Favorilere eklendi</string>
+    <string name="webpage_unfavourited">Favorilerden çıkarıldı</string>
+    <string name="webpage_hidden_from_guide">Rehberden gizlendi</string>
+    <string name="webpage_showing_in_guide">Rehberde gösteriliyor</string>
+    <string name="webpage_renamed">Yeniden adlandırıldı</string>
+    <string name="webpage_rename_failed">Ad kaydedilemedi.</string>
+    <string name="webpage_order_saved">Sıra kaydedildi</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">OpenTV kurulumu</string>
+    <string name="pairpage_sub">Burada doldurmak, kumandayla uğraşmaktan çok daha kolay.</string>
+    <string name="pairpage_kind_xtream">Xtream girişi</string>
+    <string name="pairpage_kind_m3u">M3U oynatma listesi</string>
+    <string name="pairpage_name_placeholder">Salon sağlayıcısı</string>
+    <string name="pairpage_url_hint">Kolayınıza gelirse sağlayıcınızdan gelen satırın tamamını yapıştırın, fazlalıklar otomatik temizlenir.</string>
+    <string name="pairpage_field_code">TV\'de gösterilen kod</string>
+    <string name="pairpage_code_hint">Televizyonun karşısındakinin siz olduğunuzu bu kod kanıtlar.</string>
+    <string name="pairpage_send">TV\'ye gönder</string>
+    <string name="pairpage_privacy">Bu sayfayı televizyonunuz kendi ağınız üzerinden sunar. Yazdıklarınız doğrudan ona gider, başka hiçbir yere gitmez — OpenTV hesabı ya da OpenTV sunucusu yoktur.</string>
+    <string name="pairpage_err_code">Bu kod TV\'deki kodla eşleşmiyor. Kalan deneme hakkı: %1$d.</string>
+    <string name="pairpage_err_url">Lütfen sunucu adresini girin.</string>
+    <string name="pairpage_too_many_title">Çok fazla deneme</string>
+    <string name="pairpage_too_many_body">Yeni bir kod almak için eşleştirmeyi TV\'de yeniden başlatın.</string>
+    <string name="pairpage_sent_title">TV\'nize gönderildi</string>
+    <string name="pairpage_sent_body">Telefonunuzu bırakabilirsiniz — gerisi TV\'de olur.</string>
 </resources>

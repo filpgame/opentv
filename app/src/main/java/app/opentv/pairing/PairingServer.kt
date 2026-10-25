@@ -5,7 +5,9 @@
  */
 package app.opentv.pairing
 
+import android.content.Context
 import android.util.Log
+import app.opentv.R
 import app.opentv.data.model.Source
 import app.opentv.data.model.SourceKind
 import java.io.BufferedReader
@@ -52,7 +54,11 @@ import kotlinx.coroutines.launch
  * - After [SESSION_TIMEOUT_MINUTES], or on success, the socket closes and the token is void.
  * - Five wrong codes and the session is burned.
  */
-class PairingServer(private val scope: CoroutineScope) {
+class PairingServer(
+    private val scope: CoroutineScope,
+    /** Where the page's strings come from; it is in the phone's language, not the TV's. */
+    private val context: Context,
+) {
 
     data class Session(
         /** What the QR code encodes, e.g. `http://192.168.0.14:41234/?t=…` */
@@ -186,6 +192,7 @@ class PairingServer(private val scope: CoroutineScope) {
         }
 
         val output = client.getOutputStream()
+        val text = WebText.forRequest(context, headers["accept-language"])
 
         // Every route checks the token. Without it the page does not exist.
         val supplied = query["t"] ?: PairingHttp.parseFormEncoded(body)["t"] ?: ""
@@ -196,10 +203,10 @@ class PairingServer(private val scope: CoroutineScope) {
 
         when {
             method == "GET" -> output.write(
-                PairingHttp.httpResponse("200 OK", "text/html", PairingPage.form(token, null)),
+                PairingHttp.httpResponse("200 OK", "text/html", PairingPage.form(token, null, text)),
             )
 
-            method == "POST" && path.startsWith("/submit") -> handleSubmit(output, body)
+            method == "POST" && path.startsWith("/submit") -> handleSubmit(output, body, text)
 
             else -> output.write(
                 PairingHttp.httpResponse("405 Method Not Allowed", "text/plain", "No."),
@@ -207,7 +214,7 @@ class PairingServer(private val scope: CoroutineScope) {
         }
     }
 
-    private fun handleSubmit(output: java.io.OutputStream, body: String) {
+    private fun handleSubmit(output: java.io.OutputStream, body: String, text: WebText) {
         val form = PairingHttp.parseFormEncoded(body)
 
         val code = form["code"].orEmpty().filter { it.isDigit() }
@@ -219,8 +226,9 @@ class PairingServer(private val scope: CoroutineScope) {
                         "403 Forbidden",
                         "text/html",
                         PairingPage.message(
-                            "Too many attempts",
-                            "Start pairing again on the TV to get a new code.",
+                            text.get(R.string.pairpage_too_many_title),
+                            text.get(R.string.pairpage_too_many_body),
+                            text,
                         ),
                     ),
                 )
@@ -234,8 +242,8 @@ class PairingServer(private val scope: CoroutineScope) {
                     "text/html",
                     PairingPage.form(
                         token,
-                        "That code doesn't match the one on the TV. " +
-                            "${MAX_CODE_ATTEMPTS - wrongCodeAttempts} attempts left.",
+                        text.get(R.string.pairpage_err_code, MAX_CODE_ATTEMPTS - wrongCodeAttempts),
+                        text,
                     ),
                 ),
             )
@@ -249,7 +257,7 @@ class PairingServer(private val scope: CoroutineScope) {
                 PairingHttp.httpResponse(
                     "200 OK",
                     "text/html",
-                    PairingPage.form(token, "Please fill in the server address."),
+                    PairingPage.form(token, text.get(R.string.pairpage_err_url), text),
                 ),
             )
             return
@@ -271,8 +279,9 @@ class PairingServer(private val scope: CoroutineScope) {
                 "200 OK",
                 "text/html",
                 PairingPage.message(
-                    "Sent to your TV",
-                    "You can put your phone down — the rest happens on the telly.",
+                    text.get(R.string.pairpage_sent_title),
+                    text.get(R.string.pairpage_sent_body),
+                    text,
                 ),
             ),
         )
