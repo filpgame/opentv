@@ -60,15 +60,20 @@ import app.opentv.data.model.Movie
 import app.opentv.data.model.Series
 import app.opentv.data.model.shownName
 import app.opentv.data.parser.displayTitle
+import app.opentv.data.repo.VariantGroup
 import app.opentv.ui.ChannelsViewModel
 import app.opentv.ui.VodViewModel
+import app.opentv.ui.vod.versionBadges
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Search across channels, movies and shows, results updating live as you type.
+ * Search across channels, movies and shows, results updating live as you type. Accents, case and
+ * punctuation do not matter and the words can come in any order (see `titleSearchQuery`). A film
+ * or show opens its detail page rather than playing, since that is where its dubbed, subtitled and
+ * 4K versions are chosen.
  *
  * Typing goes through a plain text field and the system keyboard rather than our own d-pad grid
  * ([OnScreenKeyboard], still used by the profile and channel-manager screens): the system IME
@@ -78,7 +83,7 @@ import java.util.Locale
 @Composable
 fun SearchScreen(
     onPlayChannel: (Channel) -> Unit,
-    onPlayMovie: (Movie) -> Unit,
+    onOpenMovie: (Movie) -> Unit,
     onOpenSeries: (Series) -> Unit,
     onBack: () -> Unit,
     viewModel: ChannelsViewModel = viewModel(),
@@ -155,18 +160,14 @@ fun SearchScreen(
                     }
                     if (movieResults.isNotEmpty()) {
                         item { SectionHeader(stringResource(R.string.nav_movies)) }
-                        items(movieResults, key = { "m${it.id}" }) { movie ->
-                            VodResultRow(movie.displayTitle, movie.posterUrl, movie.year?.toString()) {
-                                onPlayMovie(movie)
-                            }
+                        items(movieResults, key = { "m${it.primary.id}" }) { group ->
+                            VodResultRow(group) { onOpenMovie(group.primary) }
                         }
                     }
                     if (seriesResults.isNotEmpty()) {
                         item { SectionHeader(stringResource(R.string.nav_shows)) }
-                        items(seriesResults, key = { "s${it.id}" }) { show ->
-                            VodResultRow(show.displayTitle, show.posterUrl, show.year?.toString()) {
-                                onOpenSeries(show)
-                            }
+                        items(seriesResults, key = { "s${it.primary.id}" }) { group ->
+                            VodResultRow(group) { onOpenSeries(group.primary) }
                         }
                     }
                 }
@@ -194,8 +195,11 @@ private fun SectionHeader(title: String) {
     )
 }
 
+/** A movie or show result: its poster, clean title, and year and versions (`2023 · DUB · LEG · 4K`). */
 @Composable
-private fun VodResultRow(name: String, posterUrl: String?, subtitle: String?, onClick: () -> Unit) {
+private fun VodResultRow(group: VariantGroup<*>, onClick: () -> Unit) {
+    val title = group.primary
+    val subtitle = (listOfNotNull(title.year?.toString()) + versionBadges(group)).joinToString(" · ")
     var focused by remember { mutableStateOf(false) }
     Row(
         Modifier
@@ -212,14 +216,14 @@ private fun VodResultRow(name: String, posterUrl: String?, subtitle: String?, on
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
-            model = posterUrl,
+            model = title.posterUrl,
             contentDescription = null,
             modifier = Modifier.size(width = 34.dp, height = 48.dp).clip(RoundedCornerShape(6.dp)),
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) {
+            Text(title.displayTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

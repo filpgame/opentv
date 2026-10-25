@@ -61,7 +61,10 @@ import app.opentv.data.model.Episode
 import app.opentv.data.model.Movie
 import app.opentv.data.model.Series
 import app.opentv.data.model.StremioStream
+import app.opentv.data.model.VodTitle
+import app.opentv.data.parser.VodVersions
 import app.opentv.data.parser.displayTitle
+import app.opentv.data.repo.VariantGroup
 import app.opentv.ui.VodViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.window.Dialog
@@ -70,9 +73,10 @@ import kotlinx.coroutines.launch
 
 /**
  * A film's cinematic detail page: a backdrop hero with title, meta and Watch/Resume + favourite
- * over a gradient scrim, then synopsis, cast and director, and a "more like this" shelf. Opening it
- * enriches the row from the provider (backdrop/cast/genre) if those fields are still bare, so a card
- * that was plain in a grid fills out here.
+ * over a gradient scrim, then the version picker (dubbed, subtitled, 4K…) when the provider lists
+ * more than one, synopsis, cast and director, and a "more like this" shelf. Opening it enriches the
+ * row from the provider (backdrop/cast/genre) if those fields are still bare, so a card that was
+ * plain in a grid fills out here.
  */
 @Composable
 fun MovieDetailScreen(
@@ -84,8 +88,11 @@ fun MovieDetailScreen(
     viewModel: VodViewModel = viewModel(),
 ) {
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
-    var moreLike by remember(movieId) { mutableStateOf<List<Movie>>(emptyList()) }
+    var moreLike by remember(movieId) { mutableStateOf<List<VariantGroup<Movie>>>(emptyList()) }
     var resumeExists by remember(movieId) { mutableStateOf(false) }
+    // Every version of the film, and the one Watch plays: the one that was opened, until another is picked.
+    var versions by remember(movieId) { mutableStateOf<List<Movie>>(emptyList()) }
+    var selectedId by remember(movieId) { mutableStateOf(movieId) }
     val playFocus = remember { FocusRequester() }
     val hasAddons by viewModel.hasAddons.collectAsState()
     val scope = rememberCoroutineScope()
@@ -97,12 +104,18 @@ fun MovieDetailScreen(
         val loaded = viewModel.movieDetail(movieId)
         movie = loaded
         if (loaded != null) {
-            resumeExists = viewModel.resumePosition("movie:${loaded.id}")?.let { !it.isFinished } == true
+            versions = viewModel.movieVersions(loaded)
             moreLike = viewModel.moreLikeThis(loaded)
         }
     }
 
     val m = movie ?: run { LoadingDetail(); return }
+    val selected = versions.firstOrNull { it.id == selectedId } ?: m
+
+    // Each version has its own resume point, so Watch/Resume follows the picker.
+    LaunchedEffect(selected.id) {
+        resumeExists = viewModel.resumePosition("movie:${selected.id}")?.let { !it.isFinished } == true
+    }
 
     // Land focus on the primary action once the page is up, so a d-pad has somewhere to be.
     LaunchedEffect(m.id) {
@@ -118,13 +131,15 @@ fun MovieDetailScreen(
                     label = stringResource(if (resumeExists) R.string.vod_resume else R.string.vod_watch_now),
                     primary = true,
                     modifier = Modifier.focusRequester(playFocus),
-                ) { onPlay(m) }
+                ) { onPlay(selected) }
                 DetailButton(
                     icon = if (m.favourite) Icons.Filled.Star else Icons.Outlined.StarOutline,
                     label = stringResource(if (m.favourite) R.string.common_remove_favourite else R.string.common_favourite),
                 ) {
+                    // Favourites cover every version, so the picker's copies follow along.
                     viewModel.toggleMovieFavourite(m)
                     movie = m.copy(favourite = !m.favourite)
+                    versions = versions.map { it.copy(favourite = !m.favourite) }
                 }
                 // Only when the user has add-ons set up — queries them for this film's streams.
                 if (hasAddons) {
@@ -141,6 +156,11 @@ fun MovieDetailScreen(
                 }
             }
         }
+        if (versions.size > 1) {
+            item(key = "versions") {
+                VersionPicker(versions, selected.id) { selectedId = it.id }
+            }
+        }
         item(key = "info") {
             DetailInfo(
                 plot = m.plot,
@@ -153,7 +173,7 @@ fun MovieDetailScreen(
         if (moreLike.isNotEmpty()) {
             item(key = "more") {
                 Spacer(Modifier.height(4.dp))
-                MoviePosterRow(stringResource(R.string.vod_more_like_this), moreLike, onOpenMovie)
+                VodPosterRow(stringResource(R.string.vod_more_like_this), moreLike, onOpenMovie)
             }
         }
     }
@@ -164,7 +184,7 @@ fun MovieDetailScreen(
             streams = addonStreams.orEmpty(),
             onPick = { stream ->
                 addonStreams = null
-                onPlayUrl("movie:${m.id}", stream.url, m.displayTitle)
+                onPlayUrl("movie:${selected.id}", stream.url, m.displayTitle)
             },
             onDismiss = { addonStreams = null; addonLoading = false },
         )
@@ -252,9 +272,11 @@ private fun AddonStreamRow(stream: StremioStream, onPick: (StremioStream) -> Uni
 
 /**
  * A show's detail page: the same cinematic header (backdrop, title, meta, synopsis, cast, favourite)
- * above the episode list grouped by season, with a "more like this" shelf at the bottom. Episodes
- * are fetched on demand — pulling every episode of every series up front is what makes a first sync
- * take twenty minutes on a large provider, and most of it is never looked at.
+ * above the episode list grouped by season, with a "more like this" shelf at the bottom. When the
+ * provider lists the show dubbed and subtitled (`The Boys`, `The Boys [L]`), a version picker
+ * switches which one's episodes are listed. Episodes are fetched on demand — pulling every episode
+ * of every series up front is what makes a first sync take twenty minutes on a large provider, and
+ * most of it is never looked at.
  */
 @Composable
 fun SeriesDetailScreen(
@@ -265,21 +287,26 @@ fun SeriesDetailScreen(
     viewModel: VodViewModel = viewModel(),
 ) {
     var series by remember(seriesId) { mutableStateOf<Series?>(null) }
-    var moreLike by remember(seriesId) { mutableStateOf<List<Series>>(emptyList()) }
+    var moreLike by remember(seriesId) { mutableStateOf<List<VariantGroup<Series>>>(emptyList()) }
+    var versions by remember(seriesId) { mutableStateOf<List<Series>>(emptyList()) }
+    var selectedId by remember(seriesId) { mutableStateOf(seriesId) }
     val favFocus = remember { FocusRequester() }
 
     LaunchedEffect(seriesId) {
         val loaded = viewModel.seriesDetail(seriesId)
         series = loaded
         if (loaded != null) {
-            viewModel.loadEpisodes(loaded)
+            versions = viewModel.seriesVersions(loaded)
             moreLike = viewModel.moreLikeThisSeries(loaded)
         }
     }
 
     val s = series
-    val episodes by (s?.let { viewModel.episodes(it) } ?: viewModel.noEpisodes)
-        .collectAsState(initial = emptyList())
+    // The version whose episodes are listed: each copy of a show has its own episode list.
+    val shown = versions.firstOrNull { it.id == selectedId } ?: s
+    LaunchedEffect(shown?.id) { shown?.let { viewModel.loadEpisodes(it) } }
+    val episodeFlow = remember(shown?.id) { shown?.let { viewModel.episodes(it) } ?: viewModel.noEpisodes }
+    val episodes by episodeFlow.collectAsState(initial = emptyList())
 
     if (s == null) { LoadingDetail(); return }
 
@@ -307,7 +334,13 @@ fun SeriesDetailScreen(
                 ) {
                     viewModel.toggleSeriesFavourite(s)
                     series = s.copy(favourite = !s.favourite)
+                    versions = versions.map { it.copy(favourite = !s.favourite) }
                 }
+            }
+        }
+        if (versions.size > 1) {
+            item(key = "versions") {
+                VersionPicker(versions, shown?.id ?: s.id) { selectedId = it.id }
             }
         }
         item(key = "info") {
@@ -343,7 +376,7 @@ fun SeriesDetailScreen(
         if (moreLike.isNotEmpty()) {
             item(key = "more") {
                 Spacer(Modifier.height(12.dp))
-                SeriesPosterRow(stringResource(R.string.vod_more_like_this), moreLike, onOpenSeries)
+                VodPosterRow(stringResource(R.string.vod_more_like_this), moreLike, onOpenSeries)
             }
         }
     }
@@ -644,6 +677,43 @@ private fun DetailButton(
         Icon(icon, contentDescription = null, tint = content)
         Spacer(Modifier.width(8.dp))
         Text(label, style = MaterialTheme.typography.titleMedium, color = content)
+    }
+}
+
+/**
+ * The versions of one title as a row of chips — "Dublado", "Dublado · 4K · DV · HDR", "Legendado" —
+ * with the one Watch plays switched on. Picking only selects; it does not play, so a d-pad user can
+ * look along the row without starting anything.
+ */
+@Composable
+private fun <T : VodTitle> VersionPicker(versions: List<T>, selectedId: Long, onPick: (T) -> Unit) {
+    val languageChoice = versions.any { it.subtitled } && versions.any { !it.subtitled }
+    val dubbed = stringResource(R.string.vod_version_dubbed)
+    val subtitled = stringResource(R.string.vod_version_subtitled)
+    val standard = stringResource(R.string.vod_version_standard)
+    val labels = versions.map { version ->
+        val language = when {
+            !languageChoice -> null
+            version.subtitled -> subtitled
+            else -> dubbed
+        }
+        (listOfNotNull(language) + VodVersions.pictureLabels(version.name, version.qualityRank))
+            .joinToString(" · ")
+            .ifEmpty { standard }
+    }
+    // Two copies the name cannot tell apart (a playlist lists "Pinóquio" under Família and under
+    // Animação, without a year) are told apart by where the provider filed them.
+    val shown = labels.mapIndexed { i, label ->
+        if (labels.count { it == label } == 1) label
+        else listOfNotNull(label, versions[i].categoryId?.substringAfterLast('|')?.trim()?.ifEmpty { null })
+            .joinToString(" · ")
+    }
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        SectionLabel(stringResource(R.string.vod_version))
+        Spacer(Modifier.height(8.dp))
+        ChipRow(versions.size, key = { versions[it].id }) { i ->
+            FilterChip(label = shown[i], selected = versions[i].id == selectedId, onClick = { onPick(versions[i]) })
+        }
     }
 }
 

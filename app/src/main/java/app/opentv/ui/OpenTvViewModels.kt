@@ -22,13 +22,17 @@ import app.opentv.data.model.Source
 import app.opentv.data.model.SourceKind
 import app.opentv.data.model.StremioStream
 import app.opentv.data.model.StreamKind
+import app.opentv.data.model.VodTitle
+import app.opentv.data.parser.AdultContent
 import app.opentv.data.parser.displayTitle
 import app.opentv.data.parser.ChannelNameNormalizer
 import app.opentv.data.repo.CatalogRepository
 import app.opentv.data.repo.GenreGroup
-import app.opentv.data.repo.MovieVariantGroup
 import app.opentv.data.repo.PersonTitle
+import app.opentv.data.repo.VariantGroup
 import app.opentv.data.repo.distinctByQuality
+import app.opentv.data.repo.foldVersionsIn
+import app.opentv.data.repo.indexVersions
 import app.opentv.R
 import app.opentv.pairing.ManagerServer
 import app.opentv.sync.NasSync
@@ -36,6 +40,7 @@ import app.opentv.sync.SyncBundle
 import app.opentv.sync.SyncClient
 import app.opentv.sync.SyncPosition
 import app.opentv.sync.SyncServer
+import app.opentv.ui.vod.sortedByTitle
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -713,21 +718,31 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         val progress: Float,
     )
 
+    /**
+     * Whether adult titles may show right now: parental controls hide them (on by default) until the
+     * session is unlocked there. Eager, because the detail screens read `.value` for one-shot loads.
+     */
+    val showAdult: StateFlow<Boolean> =
+        combine(settings.hideAdultVod, settings.hiddenUnlocked) { hide, unlocked -> !hide || unlocked }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, !settings.hideAdultVod.value || settings.hiddenUnlocked.value)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val continueWatching: StateFlow<List<ResumeItem>> =
-        settings.activeProfileId
-            .flatMapLatest { pid -> graph.playbackPositions.observeRecent(pid) }
-            .mapLatest { positions -> positions.filter { !it.isFinished }.mapNotNull { resolveResume(it) } }
+        combine(settings.activeProfileId, showAdult) { pid, adult -> pid to adult }
+            .flatMapLatest { (pid, adult) ->
+                graph.playbackPositions.observeRecent(pid)
+                    .mapLatest { positions -> positions.filter { !it.isFinished }.mapNotNull { resolveResume(it, adult) } }
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private suspend fun resolveResume(pos: PlaybackPosition): ResumeItem? {
+    private suspend fun resolveResume(pos: PlaybackPosition, includeAdult: Boolean): ResumeItem? {
         val parts = pos.mediaKey.split(":", limit = 2)
         if (parts.size != 2) return null
         val id = parts[1].toLongOrNull() ?: return null
         val progress =
             if (pos.durationMillis > 0) (pos.positionMillis.toFloat() / pos.durationMillis).coerceIn(0f, 1f) else 0f
         return when (parts[0]) {
-            "movie" -> graph.catalogRepository.movie(id)?.let {
+            "movie" -> graph.catalogRepository.movie(id)?.takeIf { includeAdult || !it.adult }?.let {
                 ResumeItem(pos.mediaKey, it.displayTitle, it.posterUrl, it.streamUrl, progress)
             }
             "ep" -> graph.catalogRepository.episode(id)?.let {
@@ -743,8 +758,13 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** What a Movies/Shows grid shows: null = the home rows, [MY_LIST], or a category id. */
     private val movieCategory = MutableStateFlow<String?>(null)
     private val seriesCategory = MutableStateFlow<String?>(null)
+
+    /** The filter chip switched on above each tab's grid; null = every title. */
+    private val movieFilter = MutableStateFlow<VodFilter?>(null)
+    private val seriesFilter = MutableStateFlow<VodFilter?>(null)
 
     /** Provider filter for Movies/Shows. null = every source. Surfaced only when there's >1 source. */
     val selectedVodSource = MutableStateFlow<Long?>(null)
@@ -757,24 +777,32 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
     // Category chips scoped to the chosen provider: pick a provider and you see only its categories,
     // and since a category id belongs to one provider, the grid you then open is already that
     // provider's titles. null folds categories across every provider ("All sources").
+    // Adult categories ("Filmes | [XXX] Adultos") leave the rail while adult titles are hidden.
     val movieCategories: StateFlow<List<Category>> =
         combine(
             graph.catalogRepository.observeCategories(StreamKind.MOVIE),
             selectedVodSource,
-        ) { raw, sourceId -> if (sourceId == null) raw else raw.filter { it.sourceId == sourceId } }
+            showAdult,
+        ) { raw, sourceId, adult -> railCategories(raw, sourceId, adult) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val seriesCategories: StateFlow<List<Category>> =
         combine(
             graph.catalogRepository.observeCategories(StreamKind.SERIES),
             selectedVodSource,
-        ) { raw, sourceId -> if (sourceId == null) raw else raw.filter { it.sourceId == sourceId } }
+            showAdult,
+        ) { raw, sourceId, adult -> railCategories(raw, sourceId, adult) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun railCategories(raw: List<Category>, sourceId: Long?, includeAdult: Boolean): List<Category> =
+        raw.filter { (sourceId == null || it.sourceId == sourceId) && (includeAdult || !AdultContent.isAdultCategory(it.name)) }
 
     /**
      * What a whole-category grid shows. [categoryId] says which category [items] belong to, so the
      * screen never paints the previous category's titles under the new chip while the read is in
      * flight, and [loading] separates "still reading" from "this category really is empty".
+     * [filters] are the chips worth offering for this list and [filter] the one switched on; [items]
+     * is already filtered.
      *
      * A plain class on purpose: the lists are thousands of titles, and a data class would make
      * every StateFlow emission deep-compare them on the main thread to decide nothing changed.
@@ -784,46 +812,101 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         val categoryId: String? = null,
         val loading: Boolean = false,
         val items: List<T> = emptyList(),
+        val filters: List<VodFilter> = emptyList(),
+        val filter: VodFilter? = null,
     )
 
-    // The category grids used to read the category, collapse its quality variants and hand the
-    // whole thing to composition, which ran the collapse (a regex plus the channel-name normaliser
-    // per title) on the main thread — a few-thousand-title category like "Filmes | Legendados"
-    // froze the UI on tap. Now the read and the collapse both run off the main thread, and the
-    // screen gets a [CategoryBrowse.loading] state to draw a spinner from while they do.
+    /** The filter chips above a grid, each matched against every version of a title. */
+    enum class VodFilter {
+        DUBBED, SUBTITLED, NATIONAL, UHD;
+
+        fun matches(group: VariantGroup<*>): Boolean = when (this) {
+            DUBBED -> group.dubbed
+            SUBTITLED -> group.subtitled
+            NATIONAL -> group.national
+            UHD -> group.uhd
+        }
+    }
+
+    // The category grids read, fold and filter off the main thread, and the screen gets a
+    // [CategoryBrowse.loading] state to draw a spinner from while they do: a few-thousand-title
+    // category like "Filmes | Legendados" used to freeze the UI on tap. Folding is a lookup on the
+    // stored version key, so it no longer runs a regex per title. Switching a filter chip refilters
+    // the folded list in memory without reading the category again.
     // No category selected (the home shelves) reads nothing: it used to subscribe to the whole
     // movies table just in case, which is the 40k-row read the shelves never needed.
+    val movieBrowse: StateFlow<CategoryBrowse<VariantGroup<Movie>>> = browse(
+        movieCategory, movieFilter,
+        groups = { id, adult -> graph.catalogRepository.observeMovieGroups(id, adult) },
+        myList = { adult -> graph.catalogRepository.observeFavouriteMovies(adult) },
+    )
+
+    val seriesBrowse: StateFlow<CategoryBrowse<VariantGroup<Series>>> = browse(
+        seriesCategory, seriesFilter,
+        groups = { id, adult -> graph.catalogRepository.observeSeriesGroups(id, adult) },
+        myList = { adult -> graph.catalogRepository.observeFavouriteSeries(adult) },
+    )
+
+    // The DAO hands a category over newest first; the grid is sorted here by folded displayed title
+    // instead, because that is what its A–Z bar jumps through. Not in SQL: the stored name still
+    // carries provider prefixes (`4K-EN - …`) that only the Kotlin title cleaner strips. Sorted after
+    // the fold, so a group sorts by the title its poster shows, and before the chip filter, which
+    // keeps the order and so needs no second sort when a chip is switched.
     @OptIn(ExperimentalCoroutinesApi::class)
-    val movieBrowse: StateFlow<CategoryBrowse<MovieVariantGroup>> = movieCategory
-        .flatMapLatest { id ->
-            if (id == null) {
-                flowOf(CategoryBrowse())
-            } else {
-                graph.catalogRepository.observeMovies(id)
-                    .map { CategoryBrowse(id, loading = false, items = graph.catalogRepository.collapseVariants(it)) }
-                    .flowOn(Dispatchers.Default)
-                    .onStart { emit(CategoryBrowse(id, loading = true)) }
+    private fun <T : VodTitle> browse(
+        selection: StateFlow<String?>,
+        filter: StateFlow<VodFilter?>,
+        groups: (categoryId: String, includeAdult: Boolean) -> kotlinx.coroutines.flow.Flow<List<VariantGroup<T>>>,
+        myList: (includeAdult: Boolean) -> kotlinx.coroutines.flow.Flow<List<VariantGroup<T>>>,
+    ): StateFlow<CategoryBrowse<VariantGroup<T>>> =
+        combine(selection, showAdult) { id, adult -> id to adult }
+            .flatMapLatest { (id, adult) ->
+                if (id == null) {
+                    flowOf(CategoryBrowse())
+                } else {
+                    (if (id == MY_LIST) myList(adult) else groups(id, adult))
+                        .map { all -> all.sortedByTitle { it.primary.displayTitle } }
+                        .combine(filter) { all, chosen -> browseOf(id, all, chosen) }
+                        .flowOn(Dispatchers.Default)
+                        .onStart { emit(CategoryBrowse(id, loading = true)) }
+                }
             }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryBrowse())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryBrowse())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val seriesBrowse: StateFlow<CategoryBrowse<Series>> = seriesCategory
-        .flatMapLatest { id ->
-            if (id == null) {
-                flowOf(CategoryBrowse())
-            } else {
-                graph.catalogRepository.observeSeries(id)
-                    .map { CategoryBrowse(id, loading = false, items = it) }
-                    .flowOn(Dispatchers.Default)
-                    .onStart { emit(CategoryBrowse(id, loading = true)) }
-            }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryBrowse())
+    /**
+     * Applies [chosen] and works out which chips to offer: only those that would change the list.
+     * On "Legendados" every title is subtitled, so a Legendado chip there would do nothing, and on a
+     * playlist that never tags subtitles neither language chip means anything.
+     */
+    private fun <T : VodTitle> browseOf(
+        id: String,
+        all: List<VariantGroup<T>>,
+        chosen: VodFilter?,
+    ): CategoryBrowse<VariantGroup<T>> {
+        val offered = VodFilter.entries.filter { f -> all.count { f.matches(it) } in 1 until all.size }
+        val active = chosen?.takeIf { it in offered }
+        val items = if (active == null) all else all.filter { active.matches(it) }
+        return CategoryBrowse(id, loading = false, items = items, filters = offered, filter = active)
+    }
 
-    fun selectMovieCategory(id: String?) { movieCategory.value = id }
+    fun selectMovieCategory(id: String?) {
+        if (movieCategory.value != id) movieFilter.value = null
+        movieCategory.value = id
+    }
 
-    fun selectSeriesCategory(id: String?) { seriesCategory.value = id }
+    fun selectSeriesCategory(id: String?) {
+        if (seriesCategory.value != id) seriesFilter.value = null
+        seriesCategory.value = id
+    }
+
+    /** A chip press: switch [filter] on, or off again if it was the one on. */
+    fun toggleMovieFilter(filter: VodFilter) {
+        movieFilter.value = if (movieFilter.value == filter) null else filter
+    }
+
+    fun toggleSeriesFilter(filter: VodFilter) {
+        seriesFilter.value = if (seriesFilter.value == filter) null else filter
+    }
 
     /** True when at least one Stremio add-on is configured — gates the "add-on sources" button. */
     val hasAddons: StateFlow<Boolean> =
@@ -861,25 +944,48 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
     // one shared scan of the library — guarded so opening the tab twice, or recomposing, does not
     // re-scan a 20k-title catalogue; it recomputes only on a profile change or catalogue growth.
 
-    val recentlyAddedMovies: StateFlow<List<Movie>> =
-        graph.catalogRepository.recentlyAddedMovies()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val recentlyAddedMovies: StateFlow<List<VariantGroup<Movie>>> =
+        showAdult.flatMapLatest { graph.catalogRepository.recentlyAddedMovies(it) }
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val recentlyAddedSeries: StateFlow<List<Series>> =
-        graph.catalogRepository.recentlyAddedSeries()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val recentlyAddedSeries: StateFlow<List<VariantGroup<Series>>> =
+        showAdult.flatMapLatest { graph.catalogRepository.recentlyAddedSeries(it) }
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _recommendedMovies = MutableStateFlow<List<Movie>>(emptyList())
-    val recommendedMovies: StateFlow<List<Movie>> = _recommendedMovies.asStateFlow()
+    /** "My list": favourited titles, a home row of their own and an entry in the rail. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val myListMovies: StateFlow<List<VariantGroup<Movie>>> =
+        showAdult.flatMapLatest { graph.catalogRepository.observeFavouriteMovies(it) }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _movieGenreRows = MutableStateFlow<List<GenreGroup<Movie>>>(emptyList())
-    val movieGenreRows: StateFlow<List<GenreGroup<Movie>>> = _movieGenreRows.asStateFlow()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val myListSeries: StateFlow<List<VariantGroup<Series>>> =
+        showAdult.flatMapLatest { graph.catalogRepository.observeFavouriteSeries(it) }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _seriesGenreRows = MutableStateFlow<List<GenreGroup<Series>>>(emptyList())
-    val seriesGenreRows: StateFlow<List<GenreGroup<Series>>> = _seriesGenreRows.asStateFlow()
+    private val _recommendedMovies = MutableStateFlow<List<VariantGroup<Movie>>>(emptyList())
+    val recommendedMovies: StateFlow<List<VariantGroup<Movie>>> = _recommendedMovies.asStateFlow()
 
-    /** The (profile, catalogue) the computed rows were last built for — the redundant-reload guard. */
-    private data class HomeFeedsKey(val profileId: Long, val movieCount: Int, val seriesCount: Int)
+    private val _movieGenreRows = MutableStateFlow<List<GenreGroup<VariantGroup<Movie>>>>(emptyList())
+    val movieGenreRows: StateFlow<List<GenreGroup<VariantGroup<Movie>>>> = _movieGenreRows.asStateFlow()
+
+    private val _seriesGenreRows = MutableStateFlow<List<GenreGroup<VariantGroup<Series>>>>(emptyList())
+    val seriesGenreRows: StateFlow<List<GenreGroup<VariantGroup<Series>>>> = _seriesGenreRows.asStateFlow()
+
+    /** What the computed rows were last built for — the redundant-reload guard. */
+    private data class HomeFeedsKey(
+        val profileId: Long,
+        val movieCount: Int,
+        val seriesCount: Int,
+        val includeAdult: Boolean,
+        val stampRevision: Int,
+    )
 
     @Volatile private var loadedHomeFeeds: HomeFeedsKey? = null
 
@@ -896,8 +1002,10 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         // [loadHomeFeeds] so a profile switch triggers exactly one library scan, and re-opening the
         // tab with the same profile and an unchanged catalogue triggers none. Reads an empty result
         // until a VOD sync has populated the catalogue; [ensureVodLoaded] re-runs it once one has.
+        // Unlocking adult titles and a local re-stamp change the rows without changing the counts.
         viewModelScope.launch {
-            settings.activeProfileId.collect { loadHomeFeeds() }
+            combine(settings.activeProfileId, showAdult, graph.catalogRepository.vodRevision) { _, _, _ -> }
+                .collect { loadHomeFeeds() }
         }
     }
 
@@ -916,32 +1024,42 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             homeFeedsMutex.withLock {
                 val profileId = settings.activeProfileId.value
+                val includeAdult = showAdult.value
                 val movieCount = runCatching { graph.catalogRepository.movieCount() }.getOrDefault(0)
                 val seriesCount = runCatching { graph.catalogRepository.seriesCount() }.getOrDefault(0)
+                val key = HomeFeedsKey(
+                    profileId, movieCount, seriesCount, includeAdult, graph.catalogRepository.vodRevision.value,
+                )
 
                 // Already built for this profile and this exact catalogue? Then a tab re-open or a
-                // recomposition must not trigger another full-library scan. Only a profile change or
-                // a catalogue whose size moved gets past here.
-                val prev = loadedHomeFeeds
-                if (prev != null && prev.profileId == profileId &&
-                    prev.movieCount == movieCount && prev.seriesCount == seriesCount
-                ) return@withLock
+                // recomposition must not trigger another full-library scan. Only a profile change,
+                // a catalogue whose size moved, the adult unlock or a re-stamp gets past here.
+                if (loadedHomeFeeds == key) return@withLock
 
-                // One scan of each library (repo switches to IO), reused across every computed row.
-                val allMovies = runCatching { graph.catalogRepository.allMovies() }.getOrDefault(emptyList())
-                val allSeries = runCatching { graph.catalogRepository.allSeries() }.getOrDefault(emptyList())
+                // One scan of each library (repo switches to IO), reused across every computed row,
+                // and also the source of every title's other versions for the fold.
+                val allMovies = runCatching { graph.catalogRepository.allMovies(includeAdult) }.getOrDefault(emptyList())
+                val allSeries = runCatching { graph.catalogRepository.allSeries(includeAdult) }.getOrDefault(emptyList())
 
-                _recommendedMovies.value = runCatching {
-                    graph.catalogRepository.recommendedMoviesFrom(allMovies, profileId)
-                }.getOrDefault(emptyList())
-                _movieGenreRows.value = runCatching {
-                    graph.catalogRepository.moviesByGenreFrom(allMovies)
-                }.getOrDefault(emptyList())
-                _seriesGenreRows.value = runCatching {
-                    graph.catalogRepository.seriesByGenreFrom(allSeries)
-                }.getOrDefault(emptyList())
+                withContext(Dispatchers.Default) {
+                    val movieVersions = indexVersions(allMovies)
+                    val seriesVersions = indexVersions(allSeries)
+                    // Asks for three rows' worth: a title's versions sit side by side and fold into one.
+                    _recommendedMovies.value = runCatching {
+                        foldVersionsIn(graph.catalogRepository.recommendedMoviesFrom(allMovies, profileId, limit = 90), movieVersions)
+                            .take(30)
+                    }.getOrDefault(emptyList())
+                    _movieGenreRows.value = runCatching {
+                        graph.catalogRepository.moviesByGenreFrom(allMovies)
+                            .map { GenreGroup(it.genre, foldVersionsIn(it.items, movieVersions)) }
+                    }.getOrDefault(emptyList())
+                    _seriesGenreRows.value = runCatching {
+                        graph.catalogRepository.seriesByGenreFrom(allSeries)
+                            .map { GenreGroup(it.genre, foldVersionsIn(it.items, seriesVersions)) }
+                    }.getOrDefault(emptyList())
+                }
 
-                loadedHomeFeeds = HomeFeedsKey(profileId, movieCount, seriesCount)
+                loadedHomeFeeds = key
             }
         }
     }
@@ -1014,25 +1132,31 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setVodSearchQuery(text: String) { vodSearchInput.value = text }
 
-    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    val movieResults: StateFlow<List<Movie>> =
-        vodSearchInput.map { it.trim() }.debounce(200).distinctUntilChanged()
-            .flatMapLatest { q ->
-                if (q.length < 2) flowOf(emptyList()) else graph.catalogRepository.searchMovies(q)
+    @OptIn(FlowPreview::class)
+    private val vodQuery = vodSearchInput.map { it.trim() }.debounce(200).distinctUntilChanged()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val movieResults: StateFlow<List<VariantGroup<Movie>>> =
+        combine(vodQuery, showAdult) { q, adult -> q to adult }
+            .flatMapLatest { (q, adult) ->
+                if (q.length < 2) flowOf(emptyList()) else graph.catalogRepository.searchMovies(q, adult)
             }
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    val seriesResults: StateFlow<List<Series>> =
-        vodSearchInput.map { it.trim() }.debounce(200).distinctUntilChanged()
-            .flatMapLatest { q ->
-                if (q.length < 2) flowOf(emptyList()) else graph.catalogRepository.searchSeries(q)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val seriesResults: StateFlow<List<VariantGroup<Series>>> =
+        combine(vodQuery, showAdult) { q, adult -> q to adult }
+            .flatMapLatest { (q, adult) ->
+                if (q.length < 2) flowOf(emptyList()) else graph.catalogRepository.searchSeries(q, adult)
             }
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Stars or un-stars the whole title, every version of it. */
     fun toggleMovieFavourite(movie: Movie) {
         viewModelScope.launch {
-            graph.catalogRepository.setMovieFavourite(movie.id, !movie.favourite)
+            graph.catalogRepository.setMovieFavourite(movie, !movie.favourite)
         }
     }
 
@@ -1073,31 +1197,56 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
     /** Loads a series, lazily enriching backdrop/cast/genre on first open. See CatalogRepository.seriesDetail. */
     suspend fun seriesDetail(id: Long): Series? = graph.catalogRepository.seriesDetail(id)
 
+    /** Every version of a film (dubbed, subtitled, 4K…), for the detail page's picker. */
+    suspend fun movieVersions(movie: Movie): List<Movie> =
+        graph.catalogRepository.movieVersions(movie, showAdult.value)
+
+    /** Every version of a show; each has its own episodes. */
+    suspend fun seriesVersions(series: Series): List<Series> =
+        graph.catalogRepository.seriesVersions(series, showAdult.value)
+
     /** "More like this" for the movie detail screen. */
-    suspend fun moreLikeThis(movie: Movie): List<Movie> = graph.catalogRepository.moreLikeThis(movie)
+    suspend fun moreLikeThis(movie: Movie): List<VariantGroup<Movie>> {
+        val adult = showAdult.value
+        return graph.catalogRepository.movieGroups(graph.catalogRepository.moreLikeThis(movie, adult), adult)
+    }
 
     /** "More like this" for the series detail screen. */
-    suspend fun moreLikeThisSeries(series: Series): List<Series> =
-        graph.catalogRepository.moreLikeThisSeries(series)
+    suspend fun moreLikeThisSeries(series: Series): List<VariantGroup<Series>> {
+        val adult = showAdult.value
+        return graph.catalogRepository.seriesGroups(graph.catalogRepository.moreLikeThisSeries(series, adult), adult)
+    }
 
     /** Every library title (movies + series) featuring a person — the Person screen's grid. */
-    suspend fun titlesWithPerson(name: String): List<PersonTitle> =
-        graph.catalogRepository.titlesWithPerson(name)
+    suspend fun titlesWithPerson(name: String): List<PersonTitle> {
+        val adult = showAdult.value
+        return graph.catalogRepository.titlesWithPerson(name).filter { title ->
+            adult || when (title) {
+                is PersonTitle.MovieItem -> !title.movie.adult
+                is PersonTitle.SeriesItem -> !title.series.adult
+            }
+        }
+    }
 
     /** The active profile's saved resume position for a movie/episode, or null — drives Resume vs Watch now. */
     suspend fun resumePosition(mediaKey: String): PlaybackPosition? =
         graph.playbackPositions.get(settings.activeProfileId.value, mediaKey)
 
-    /** Star / un-star a whole series. Wraps the series DAO through the shared database — no data-layer change. */
+    /** Star / un-star a whole series, every version of it. */
     fun toggleSeriesFavourite(series: Series) {
         viewModelScope.launch {
-            graph.database.series().setFavourite(series.id, !series.favourite)
+            graph.catalogRepository.setSeriesFavourite(series, !series.favourite)
         }
     }
 
     /** The user-agent to play a movie/episode with (per source). */
     suspend fun userAgentForSource(sourceId: Long): String =
         graph.sourceRepository.byId(sourceId)?.userAgent ?: "OpenTV/0.1 (Android)"
+
+    companion object {
+        /** The rail's "My list" entry, in the same slot as a category id; no provider id looks like it. */
+        const val MY_LIST = "opentv:my-list"
+    }
 }
 
 /**

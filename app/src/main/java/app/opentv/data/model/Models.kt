@@ -153,6 +153,8 @@ data class Channel(
      * [shownName]) and is carried across catalogue re-syncs, so a rename is not lost on refresh.
      */
     val customName: String? = null,
+    /** Folded provider and display names for accent-blind search; see [app.opentv.data.parser.SearchText]. */
+    @ColumnInfo(defaultValue = "") val searchKey: String = "",
     /**
      * Stamp of the last catalogue sync that saw this channel.
      *
@@ -256,27 +258,65 @@ data class Programme(
     }
 }
 
+/**
+ * What movies and shows share for search, version folding and the adult filter, so one grid, one
+ * badge row and one fold serve both tabs.
+ *
+ * The last six fields are not from the provider: [app.opentv.data.parser.VodVersions.stamp] computes
+ * them from the name and category at import and they are stored, because a playlist's only metadata
+ * is its names and recomputing them for 40,000 titles on every screen is what froze category taps.
+ */
+interface VodTitle {
+    val id: Long
+    val sourceId: Long
+    val name: String
+    val categoryId: String?
+    val posterUrl: String?
+    val rating: Double?
+    val year: Int?
+    val favourite: Boolean
+
+    /** Folded title words, padded with spaces, matched by search. */
+    val searchKey: String
+
+    /** Shared by every version (dubbed, subtitled, 4K…) of one title within a source; empty = unstamped. */
+    val variantKey: String
+
+    /** The subtitled version (`[L]`, or a "Legendados" category); otherwise the list's dubbed one. */
+    val subtitled: Boolean
+
+    /** Picture quality rank from the name or category; 400 and up is 4K. 0 = not stated. */
+    val qualityRank: Int
+
+    /** From a "Nacionais" category or a `[Nacional]` tag. */
+    val national: Boolean
+
+    /** Hidden by parental controls unless unlocked; see [app.opentv.data.parser.AdultContent]. */
+    val adult: Boolean
+}
+
 @Entity(
     tableName = "movies",
     indices = [
         Index(value = ["sourceId", "streamId"], unique = true),
         Index(value = ["sourceId", "categoryId"]),
+        Index(value = ["variantKey"]),
     ],
 )
 data class Movie(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val sourceId: Long,
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
+    override val sourceId: Long,
     val streamId: String,
-    val name: String,
-    val categoryId: String?,
-    val posterUrl: String?,
-    val rating: Double?,
-    val year: Int?,
+    override val name: String,
+    override val categoryId: String?,
+    override val posterUrl: String?,
+    override val rating: Double?,
+    override val year: Int?,
     val plot: String?,
     val durationSeconds: Int?,
     val containerExtension: String?,
     val streamUrl: String,
-    val favourite: Boolean = false,
+    override val favourite: Boolean = false,
     val addedMillis: Long = 0,
     /**
      * Richer metadata for the Netflix-style detail/home surfaces, pulled from the provider's own
@@ -293,26 +333,33 @@ data class Movie(
     val tmdbId: String? = null,
     /** Director(s), provider-formatted. Movies only. */
     val director: String? = null,
-)
+    @ColumnInfo(defaultValue = "") override val searchKey: String = "",
+    @ColumnInfo(defaultValue = "") override val variantKey: String = "",
+    @ColumnInfo(defaultValue = "0") override val subtitled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") override val qualityRank: Int = 0,
+    @ColumnInfo(defaultValue = "0") override val national: Boolean = false,
+    @ColumnInfo(defaultValue = "0") override val adult: Boolean = false,
+) : VodTitle
 
 @Entity(
     tableName = "series",
     indices = [
         Index(value = ["sourceId", "seriesId"], unique = true),
         Index(value = ["sourceId", "categoryId"]),
+        Index(value = ["variantKey"]),
     ],
 )
 data class Series(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val sourceId: Long,
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
+    override val sourceId: Long,
     val seriesId: String,
-    val name: String,
-    val categoryId: String?,
-    val posterUrl: String?,
-    val rating: Double?,
-    val year: Int?,
+    override val name: String,
+    override val categoryId: String?,
+    override val posterUrl: String?,
+    override val rating: Double?,
+    override val year: Int?,
     val plot: String?,
-    val favourite: Boolean = false,
+    override val favourite: Boolean = false,
     val addedMillis: Long = 0,
     /**
      * Richer metadata for the Netflix-style detail/home surfaces, from the provider's own Xtream
@@ -327,7 +374,13 @@ data class Series(
     val genre: String? = null,
     /** TMDB id, stored only — resolved/used by a later agent. Coerced to String (panels vary). */
     val tmdbId: String? = null,
-)
+    @ColumnInfo(defaultValue = "") override val searchKey: String = "",
+    @ColumnInfo(defaultValue = "") override val variantKey: String = "",
+    @ColumnInfo(defaultValue = "0") override val subtitled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") override val qualityRank: Int = 0,
+    @ColumnInfo(defaultValue = "0") override val national: Boolean = false,
+    @ColumnInfo(defaultValue = "0") override val adult: Boolean = false,
+) : VodTitle
 
 @Entity(
     tableName = "episodes",

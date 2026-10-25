@@ -158,7 +158,7 @@
     <string name="parental_hidden_categories">Hidden categories</string>
     <string name="parental_hidden_desc">Anything switched on here is removed from Live TV until you turn on “Show hidden now” below. With a PIN set, this screen stays locked, so hidden stays hidden.</string>
     <string name="parental_show_hidden_title">Show hidden now (this session)</string>
-    <string name="parental_show_hidden_subtitle">Reveals hidden categories until the app is restarted.</string>
+    <string name="parental_show_hidden_subtitle">Reveals hidden categories, and adult movies and shows, until the app is restarted.</string>
     <string name="parental_no_categories">No categories yet — add a provider first.</string>
     <string name="parental_pin">PIN</string>
     <string name="parental_pin_is_set">A PIN is set.</string>
@@ -366,6 +366,22 @@
     <string name="vod_detail_loading">Loading…</string>
     <string name="vod_person_title">With %1$s</string>
     <string name="vod_person_empty">Nothing else with %1$s in your library.</string>
+    <string name="vod_my_list">My list</string>
+    <string name="vod_my_list_empty_title">Nothing in My list yet</string>
+    <string name="vod_my_list_empty_body">Open a movie or show and choose Favourite to keep it here.</string>
+    <string name="vod_filter_dubbed">Dubbed</string>
+    <string name="vod_filter_subtitled">Subtitled</string>
+    <string name="vod_filter_national">Local</string>
+    <string name="vod_filter_4k">4K</string>
+    <string name="vod_badge_dub">DUB</string>
+    <string name="vod_badge_sub">SUB</string>
+    <string name="vod_version">Version</string>
+    <string name="vod_version_dubbed">Dubbed</string>
+    <string name="vod_version_subtitled">Subtitled</string>
+    <string name="vod_version_standard">Standard</string>
+    <string name="parental_hide_adult_vod_title">Hide adult movies and shows</string>
+    <string name="parental_hide_adult_vod_subtitle">Titles and categories marked XXX, Adult, +18 or Porn stay out of Movies, Shows and search until you turn on “Show hidden now”.</string>
+    <string name="parental_no_pin_note">Without a PIN, anyone can turn on “Show hidden now”. Set a PIN above to lock it.</string>
 
     <!-- Metadata / TMDB back-fill -->
     <string name="settings_section_metadata">Metadata</string>

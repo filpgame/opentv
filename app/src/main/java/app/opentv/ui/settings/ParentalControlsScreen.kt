@@ -45,10 +45,13 @@ import app.opentv.core.ServiceLocator
 import app.opentv.ui.ChannelsViewModel
 
 /**
- * Parental controls: a PIN, and a list of categories to keep out of the guide.
+ * Parental controls: a PIN, adult movies and shows, and a list of categories to keep out of the guide.
  *
  * Hidden categories vanish from Live TV — rail, All channels, and search — until the session is
- * unlocked here. If a PIN is set, this screen is itself behind the PIN, so a child cannot simply
+ * unlocked here. Adult movies and shows are found automatically (see `AdultContent`) and hidden the
+ * same way, behind the same unlock. They are hidden even with no PIN set: without a PIN anyone can
+ * come here and reveal them, but they still stay out of the home rows and search, which is most of
+ * what a family wants; the PIN is what then makes it a lock. If a PIN is set, this screen is itself behind the PIN, so a child cannot simply
  * come here and unlock. The PIN is a family lock, not a vault: it's a four-digit code stored as a
  * salted hash, enough to stop casual access, not a serious attacker.
  */
@@ -62,6 +65,7 @@ fun ParentalControlsScreen(
     val pinIsSet by settings.pinIsSet.collectAsState()
     val hidden by settings.hiddenCategories.collectAsState()
     val unlocked by settings.hiddenUnlocked.collectAsState()
+    val hideAdultVod by settings.hideAdultVod.collectAsState()
     val categories by channelsViewModel.categoryGroups.collectAsState()
 
     var authed by remember { mutableStateOf(false) }
@@ -89,6 +93,34 @@ fun ParentalControlsScreen(
         Spacer(Modifier.height(20.dp))
 
         PinSection(pinIsSet = pinIsSet, onSetPin = settings::setPin, onClearPin = settings::clearPin)
+
+        Spacer(Modifier.height(16.dp))
+
+        Card {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.parental_hide_adult_vod_title), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.parental_hide_adult_vod_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = hideAdultVod, onCheckedChange = settings::setHideAdultVod)
+            }
+        }
+        if (!pinIsSet) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.parental_no_pin_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.widthIn(max = 720.dp),
+            )
+        }
 
         Spacer(Modifier.height(16.dp))
 

@@ -164,7 +164,7 @@
     <string name="parental_hidden_categories">Categorias ocultas</string>
     <string name="parental_hidden_desc">Tudo o que estiver ativado aqui é removido da TV ao vivo até você ativar “Mostrar ocultos agora” abaixo. Com um PIN definido, esta tela fica bloqueada, então o que está oculto continua oculto.</string>
     <string name="parental_show_hidden_title">Mostrar ocultos agora (nesta sessão)</string>
-    <string name="parental_show_hidden_subtitle">Revela as categorias ocultas até o app ser reiniciado.</string>
+    <string name="parental_show_hidden_subtitle">Revela as categorias ocultas, e os filmes e séries adultos, até o app ser reiniciado.</string>
     <string name="parental_no_categories">Nenhuma categoria ainda — adicione um provedor primeiro.</string>
     <string name="parental_pin">PIN</string>
     <string name="parental_pin_is_set">Há um PIN definido.</string>
@@ -372,6 +372,22 @@
     <string name="vod_detail_loading">Carregando…</string>
     <string name="vod_person_title">Com %1$s</string>
     <string name="vod_person_empty">Nada mais com %1$s na sua biblioteca.</string>
+    <string name="vod_my_list">Minha lista</string>
+    <string name="vod_my_list_empty_title">Sua lista está vazia</string>
+    <string name="vod_my_list_empty_body">Abra um filme ou série e toque em Favorito para guardá-lo aqui.</string>
+    <string name="vod_filter_dubbed">Dublado</string>
+    <string name="vod_filter_subtitled">Legendado</string>
+    <string name="vod_filter_national">Nacional</string>
+    <string name="vod_filter_4k">4K</string>
+    <string name="vod_badge_dub">DUB</string>
+    <string name="vod_badge_sub">LEG</string>
+    <string name="vod_version">Versão</string>
+    <string name="vod_version_dubbed">Dublado</string>
+    <string name="vod_version_subtitled">Legendado</string>
+    <string name="vod_version_standard">Padrão</string>
+    <string name="parental_hide_adult_vod_title">Ocultar filmes e séries adultos</string>
+    <string name="parental_hide_adult_vod_subtitle">Títulos e categorias marcados como XXX, Adulto, +18 ou Pornô ficam fora de Filmes, Séries e da busca até você ativar “Mostrar ocultos agora”.</string>
+    <string name="parental_no_pin_note">Sem PIN, qualquer pessoa pode ativar “Mostrar ocultos agora”. Defina um PIN acima para bloquear.</string>
 
     <!-- Metadata / TMDB back-fill -->
     <string name="settings_section_metadata">Metadados</string>

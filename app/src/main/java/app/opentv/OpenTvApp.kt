@@ -74,6 +74,17 @@ class OpenTvApp : Application(), ImageLoaderFactory {
         // the stored channels and re-run the guide matcher — locally, no re-download. This
         // is why a name-cleanup fix shows up on the next launch rather than the next 6-hour
         // sync, and it costs nothing when the version has not changed.
+        // Same for the search and version keys of movies and shows. Its own coroutine, because a
+        // 50,000-title playlist takes seconds to re-stamp on a car unit and the guide sync below
+        // should not wait for it.
+        appScope.launch {
+            val prefs = getSharedPreferences("opentv", MODE_PRIVATE)
+            if (prefs.getInt("vod_stamp_version", 0) < CatalogRepository.VOD_STAMP_VERSION) {
+                graph.catalogRepository.restampVod()
+                prefs.edit().putInt("vod_stamp_version", CatalogRepository.VOD_STAMP_VERSION).apply()
+            }
+        }
+
         appScope.launch {
             val prefs = getSharedPreferences("opentv", MODE_PRIVATE)
             val seen = prefs.getInt("normalizer_version", 0)

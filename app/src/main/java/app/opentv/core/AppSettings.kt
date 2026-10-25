@@ -83,6 +83,20 @@ class AppSettings private constructor(context: Context) {
     private val _hiddenUnlocked = MutableStateFlow(false)
     val hiddenUnlocked: StateFlow<Boolean> = _hiddenUnlocked.asStateFlow()
 
+    /**
+     * Whether Movies and Shows keep adult titles out of sight (rail, home rows, grids, search) until
+     * the session is unlocked. On by default even without a PIN: the point is first that a quarter of
+     * a Brazilian playlist's films are adult and would otherwise fill the home rows; a PIN is what
+     * then stops someone else from revealing them.
+     */
+    private val _hideAdultVod = MutableStateFlow(prefs.getBoolean(KEY_HIDE_ADULT_VOD, true))
+    val hideAdultVod: StateFlow<Boolean> = _hideAdultVod.asStateFlow()
+
+    fun setHideAdultVod(hide: Boolean) {
+        prefs.edit().putBoolean(KEY_HIDE_ADULT_VOD, hide).apply()
+        _hideAdultVod.value = hide
+    }
+
     fun setPin(pin: String) {
         prefs.edit().putString(KEY_PIN_HASH, hashPin(pin)).apply()
         _pinIsSet.value = true
@@ -356,6 +370,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_PREVIEW_SOUND = "guide_preview_sound"
         private const val KEY_PIN_HASH = "parental_pin_hash"
         private const val KEY_HIDDEN_CATS = "hidden_categories"
+        private const val KEY_HIDE_ADULT_VOD = "hide_adult_vod"
         private const val KEY_ACTIVE_PROFILE = "active_profile_id"
         private const val KEY_RESUME_LAST = "resume_last_channel"
         private const val KEY_CONTENT_LIVE = "content_live"

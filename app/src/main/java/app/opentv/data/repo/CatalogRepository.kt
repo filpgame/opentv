@@ -15,6 +15,7 @@ import app.opentv.data.db.MovieDao
 import app.opentv.data.db.PlaybackPositionDao
 import app.opentv.data.db.SeriesDao
 import app.opentv.data.db.SourceDao
+import app.opentv.data.db.VodStampRow
 import app.opentv.data.model.Category
 import app.opentv.data.model.Channel
 import app.opentv.data.model.Episode
@@ -26,13 +27,22 @@ import app.opentv.data.model.SourceKind
 import app.opentv.data.model.StreamKind
 import app.opentv.data.parser.ChannelNameNormalizer
 import app.opentv.data.parser.M3uParser
+import app.opentv.data.parser.SearchText
 import app.opentv.data.parser.VodTitleCleaner
+import app.opentv.data.parser.VodVersions
 import app.opentv.data.remote.StalkerApi
 import app.opentv.data.remote.TmdbClient
 import app.opentv.data.remote.XtreamApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -64,53 +74,6 @@ data class GenreGroup<T>(val genre: String, val items: List<T>)
 sealed interface PersonTitle {
     data class MovieItem(val movie: Movie) : PersonTitle
     data class SeriesItem(val series: Series) : PersonTitle
-}
-
-/** One quality variant of a film, with the quality parsed from its name by [ChannelNameNormalizer]. */
-data class MovieVariant(val movie: Movie, val qualityLabel: String, val qualityRank: Int)
-
-/** One logical film with its switchable quality tiers, best first — the VOD analogue of a channel group. */
-@androidx.compose.runtime.Immutable
-data class MovieVariantGroup(
-    /** Best-quality variant: what a row shows and plays by default. */
-    val primary: Movie,
-    /** Every variant (including [primary]), best quality first. */
-    val variants: List<MovieVariant>,
-) {
-    val hasMultipleQualities: Boolean get() = variants.size > 1
-}
-
-/** A standalone 4-digit release year (19xx/20xx) as it appears inside a VOD title. */
-private val VOD_YEAR = Regex("""\b(19|20)\d{2}\b""")
-
-/**
- * Collapses obvious quality variants of the same film — "The Godfather 1972 HD" and
- * "The Godfather 4K" — into one entry with switchable tiers, the VOD analogue of a channel's
- * quality group. Pure and in-memory: movies carry no stored groupKey, so the key is computed here
- * from the normalised, year-stripped name plus the year (the field, else the one embedded in the
- * name). Group order follows first appearance; variants within a group are best-quality first.
- *
- * It folds only genuine quality variants: edition tokens [ChannelNameNormalizer] does not know
- * (IMAX, EXTENDED, 3D) stay in the name and keep those cuts separate — intended. Two same-named
- * films that both lack any year will merge, an accepted edge for a best-effort collapse.
- */
-internal fun collapseMovieVariants(movies: List<Movie>): List<MovieVariantGroup> {
-    val groups = LinkedHashMap<String, MutableList<MovieVariant>>()
-    for (movie in movies) {
-        val embeddedYear = VOD_YEAR.find(movie.name)?.value?.toIntOrNull()
-        val bareName = VOD_YEAR.replace(movie.name, " ")
-        val normalized = ChannelNameNormalizer.normalize(bareName)
-        val year = movie.year ?: embeddedYear
-        val key = normalized.groupKey + "|" + (year?.toString() ?: "")
-        groups.getOrPut(key) { mutableListOf() }
-            .add(MovieVariant(movie, normalized.qualityLabel, normalized.qualityRank))
-    }
-    return groups.values.map { variants ->
-        val ordered = variants.sortedWith(
-            compareByDescending<MovieVariant> { it.qualityRank }.thenBy { it.movie.name },
-        )
-        MovieVariantGroup(primary = ordered.first().movie, variants = ordered)
-    }
 }
 
 /**
@@ -169,11 +132,55 @@ class CatalogRepository(
 
     fun observeCategories(kind: StreamKind): Flow<List<Category>> = categoryDao.observe(kind)
 
-    fun observeMovies(categoryId: String? = null): Flow<List<Movie>> =
-        movieDao.observe(categoryId).retryIfTableShrank()
+    /**
+     * Bumped whenever stored rows were re-stamped in place ([restampVod]), which changes what the
+     * home rows should hold without changing how many titles there are.
+     */
+    private val _vodRevision = MutableStateFlow(0)
+    val vodRevision: StateFlow<Int> = _vodRevision.asStateFlow()
 
-    fun observeSeries(categoryId: String? = null): Flow<List<Series>> =
-        seriesDao.observe(categoryId).retryIfTableShrank()
+    /** One category's films as posters, each folded with its versions from other categories. */
+    fun observeMovieGroups(categoryId: String, includeAdult: Boolean): Flow<List<VariantGroup<Movie>>> =
+        movieDao.observeCategoryWithVersions(categoryId, includeAdult).retryIfTableShrank()
+            .map { rows -> rows.partition { it.categoryId == categoryId }.let { (shown, extra) -> foldVersions(shown, extra) } }
+
+    /** One category's shows as posters, each folded with its versions. See [observeMovieGroups]. */
+    fun observeSeriesGroups(categoryId: String, includeAdult: Boolean): Flow<List<VariantGroup<Series>>> =
+        seriesDao.observeCategoryWithVersions(categoryId, includeAdult).retryIfTableShrank()
+            .map { rows -> rows.partition { it.categoryId == categoryId }.let { (shown, extra) -> foldVersions(shown, extra) } }
+
+    /** "My list": favourited films. Favouriting marks every version, so no lookup is needed. */
+    fun observeFavouriteMovies(includeAdult: Boolean): Flow<List<VariantGroup<Movie>>> =
+        movieDao.observeFavourites(includeAdult).retryIfTableShrank().map { foldVersions(it) }
+
+    fun observeFavouriteSeries(includeAdult: Boolean): Flow<List<VariantGroup<Series>>> =
+        seriesDao.observeFavourites(includeAdult).retryIfTableShrank().map { foldVersions(it) }
+
+    /** Folds a short list (a home row, search results) with its titles' other versions, looked up by key. */
+    suspend fun movieGroups(shown: List<Movie>, includeAdult: Boolean): List<VariantGroup<Movie>> =
+        foldVersions(shown, versionsByKey(shown) { movieDao.withVariantKeys(it, includeAdult) })
+
+    suspend fun seriesGroups(shown: List<Series>, includeAdult: Boolean): List<VariantGroup<Series>> =
+        foldVersions(shown, versionsByKey(shown) { seriesDao.withVariantKeys(it, includeAdult) })
+
+    private suspend fun <T : app.opentv.data.model.VodTitle> versionsByKey(
+        shown: List<T>,
+        lookup: suspend (List<String>) -> List<T>,
+    ): List<T> = withContext(Dispatchers.IO) {
+        // Chunked under SQLite's bound-variable cap; short lists are one query.
+        shown.mapNotNull { it.variantKey.ifEmpty { null } }.distinct().chunked(500).flatMap { lookup(it) }
+    }
+
+    /** Every version of [movie]'s title within its source, in picker order; at least [movie] itself. */
+    suspend fun movieVersions(movie: Movie, includeAdult: Boolean): List<Movie> =
+        if (movie.variantKey.isEmpty()) listOf(movie)
+        else movieDao.versionsOf(movie.sourceId, movie.variantKey, includeAdult)
+            .ifEmpty { listOf(movie) }.sortedWith(VERSION_ORDER)
+
+    suspend fun seriesVersions(series: Series, includeAdult: Boolean): List<Series> =
+        if (series.variantKey.isEmpty()) listOf(series)
+        else seriesDao.versionsOf(series.sourceId, series.variantKey, includeAdult)
+            .ifEmpty { listOf(series) }.sortedWith(VERSION_ORDER)
 
     /**
      * Android fills a cursor one 2 MB window at a time and re-runs the query for every window,
@@ -196,9 +203,12 @@ class CatalogRepository(
     fun searchChannelsIncludingHidden(query: String): Flow<List<Channel>> =
         channelDao.searchIncludingHidden(query)
 
-    fun searchMovies(query: String): Flow<List<Movie>> = movieDao.search(query)
+    /** Ranked, accent-blind film search, folded so `Junk` and `Junk [L]` are one result. */
+    fun searchMovies(query: String, includeAdult: Boolean): Flow<List<VariantGroup<Movie>>> =
+        movieDao.search(query, includeAdult).map { movieGroups(it, includeAdult) }
 
-    fun searchSeries(query: String): Flow<List<Series>> = seriesDao.search(query)
+    fun searchSeries(query: String, includeAdult: Boolean): Flow<List<VariantGroup<Series>>> =
+        seriesDao.search(query, includeAdult).map { seriesGroups(it, includeAdult) }
 
     suspend fun channel(id: Long): Channel? = channelDao.byId(id)
 
@@ -229,17 +239,22 @@ class CatalogRepository(
     // per-genre LIKE query would multiply round-trips and match substrings). A later UI agent wraps
     // these into home rows and detail screens.
 
-    /** "Recently Added" movies, newest first. Reactive. */
-    fun recentlyAddedMovies(limit: Int = 30): Flow<List<Movie>> = movieDao.observeRecentlyAdded(limit)
+    /**
+     * "Recently Added" movies, newest first, folded with their versions. Reactive. Reads twice the
+     * row's length because versions listed side by side fold into one poster.
+     */
+    fun recentlyAddedMovies(includeAdult: Boolean, limit: Int = 30): Flow<List<VariantGroup<Movie>>> =
+        movieDao.observeRecentlyAdded(limit * 2, includeAdult).map { movieGroups(it, includeAdult).take(limit) }
 
-    /** "Recently Added" series, newest first. Reactive. */
-    fun recentlyAddedSeries(limit: Int = 30): Flow<List<Series>> = seriesDao.observeRecentlyAdded(limit)
+    /** "Recently Added" series, newest first, folded. Reactive. */
+    fun recentlyAddedSeries(includeAdult: Boolean, limit: Int = 30): Flow<List<VariantGroup<Series>>> =
+        seriesDao.observeRecentlyAdded(limit * 2, includeAdult).map { seriesGroups(it, includeAdult).take(limit) }
 
     /** Every movie, newest first — for a caller that wants to build its own groupings. */
-    suspend fun allMovies(): List<Movie> = withContext(Dispatchers.IO) { movieDao.all() }
+    suspend fun allMovies(includeAdult: Boolean): List<Movie> = withContext(Dispatchers.IO) { movieDao.all(includeAdult) }
 
     /** Every series, newest first. */
-    suspend fun allSeries(): List<Series> = withContext(Dispatchers.IO) { seriesDao.all() }
+    suspend fun allSeries(includeAdult: Boolean): List<Series> = withContext(Dispatchers.IO) { seriesDao.all(includeAdult) }
 
     /** How many movies / series are on disk — a cheap COUNT the home screen uses to tell "the
      *  library grew" from "unchanged since last open" without loading every row. */
@@ -253,11 +268,11 @@ class CatalogRepository(
      * are split on comma and pipe (see [splitGenres]).
      */
     suspend fun moviesByGenre(maxGenres: Int = 12, perGenre: Int = 30): List<GenreGroup<Movie>> =
-        withContext(Dispatchers.IO) { groupByGenre(movieDao.all(), Movie::genre, maxGenres, perGenre) }
+        withContext(Dispatchers.IO) { groupByGenre(movieDao.all(includeAdult = false), Movie::genre, maxGenres, perGenre) }
 
     /** Series grouped by genre for the by-genre home rows. See [moviesByGenre]. */
     suspend fun seriesByGenre(maxGenres: Int = 12, perGenre: Int = 30): List<GenreGroup<Series>> =
-        withContext(Dispatchers.IO) { groupByGenre(seriesDao.all(), Series::genre, maxGenres, perGenre) }
+        withContext(Dispatchers.IO) { groupByGenre(seriesDao.all(includeAdult = false), Series::genre, maxGenres, perGenre) }
 
     /**
      * Movies grouped by genre from an ALREADY-LOADED list — the single-scan path the home screen
@@ -281,7 +296,7 @@ class CatalogRepository(
      * only watched movies that carry no genre — it falls back to top-rated, then recently-added.
      */
     suspend fun recommendedMovies(profileId: Long, limit: Int = 30): List<Movie> =
-        withContext(Dispatchers.IO) { recommendFrom(movieDao.all(), watchedMovieIds(profileId), limit) }
+        withContext(Dispatchers.IO) { recommendFrom(movieDao.all(includeAdult = false), watchedMovieIds(profileId), limit) }
 
     /**
      * "Recommended for you" from an ALREADY-LOADED movie list — the single-scan path (see
@@ -333,13 +348,14 @@ class CatalogRepository(
      * same-source titles preferred, the film itself excluded. Falls back to other titles in the
      * same source/category when the movie has no genre metadata to match on.
      */
-    suspend fun moreLikeThis(movie: Movie, limit: Int = 20): List<Movie> = withContext(Dispatchers.IO) {
+    suspend fun moreLikeThis(movie: Movie, includeAdult: Boolean, limit: Int = 20): List<Movie> = withContext(Dispatchers.IO) {
         val genres = splitGenres(movie.genre).toSet()
         if (genres.isEmpty()) {
-            return@withContext movieDao.similarByCategory(movie.sourceId, movie.categoryId, movie.id, limit)
+            return@withContext movieDao.similarByCategory(movie.sourceId, movie.categoryId, movie.id, limit, includeAdult)
+                .filterNot { isVersionOf(it, movie) }
         }
-        movieDao.all().asSequence()
-            .filter { it.id != movie.id }
+        movieDao.all(includeAdult).asSequence()
+            .filter { it.id != movie.id && !isVersionOf(it, movie) }
             .map { it to sharedGenreCount(it.genre, genres) }
             .filter { it.second > 0 }
             .sortedWith(
@@ -395,13 +411,14 @@ class CatalogRepository(
         }
 
     /** "More Like This" for a series. See [moreLikeThis]. */
-    suspend fun moreLikeThisSeries(series: Series, limit: Int = 20): List<Series> = withContext(Dispatchers.IO) {
+    suspend fun moreLikeThisSeries(series: Series, includeAdult: Boolean, limit: Int = 20): List<Series> = withContext(Dispatchers.IO) {
         val genres = splitGenres(series.genre).toSet()
         if (genres.isEmpty()) {
-            return@withContext seriesDao.similarByCategory(series.sourceId, series.categoryId, series.id, limit)
+            return@withContext seriesDao.similarByCategory(series.sourceId, series.categoryId, series.id, limit, includeAdult)
+                .filterNot { isVersionOf(it, series) }
         }
-        seriesDao.all().asSequence()
-            .filter { it.id != series.id }
+        seriesDao.all(includeAdult).asSequence()
+            .filter { it.id != series.id && !isVersionOf(it, series) }
             .map { it to sharedGenreCount(it.genre, genres) }
             .filter { it.second > 0 }
             .sortedWith(
@@ -515,14 +532,11 @@ class CatalogRepository(
         result
     }
 
-    /**
-     * Collapses a list of movies (e.g. one category's titles) into logical films with switchable
-     * quality tiers — see [collapseMovieVariants]. Pure; hand it whatever list the UI is about to
-     * show. Kept here as the discoverable entry point for the VOD UI.
-     */
-    fun collapseVariants(movies: List<Movie>): List<MovieVariantGroup> = collapseMovieVariants(movies)
-
     // -- feed helpers --
+
+    /** Another copy of the same title, which "more like this" should not offer as a different one. */
+    private fun isVersionOf(other: app.opentv.data.model.VodTitle, title: app.opentv.data.model.VodTitle): Boolean =
+        title.variantKey.isNotEmpty() && other.sourceId == title.sourceId && other.variantKey == title.variantKey
 
     /** A movie counts as "already enriched" once any headline detail field is set, so [movieDetail]
      *  re-fetches only truly-bare rows. A movie the provider has no metadata for re-fetches each open;
@@ -603,8 +617,14 @@ class CatalogRepository(
     suspend fun channelsInCategoryForManager(sourceId: Long?, categoryId: String): List<Channel> =
         channelDao.channelsInCategoryIncludingHidden(sourceId, categoryId)
 
-    suspend fun setMovieFavourite(id: Long, favourite: Boolean) =
-        movieDao.setFavourite(id, favourite)
+    /** Favourites a title, every version of it, so My list shows it whichever copy was favourited. */
+    suspend fun setMovieFavourite(movie: Movie, favourite: Boolean) =
+        if (movie.variantKey.isEmpty()) movieDao.setFavourite(movie.id, favourite)
+        else movieDao.setFavouriteForVersions(movie.sourceId, movie.variantKey, favourite)
+
+    suspend fun setSeriesFavourite(series: Series, favourite: Boolean) =
+        if (series.variantKey.isEmpty()) seriesDao.setFavourite(series.id, favourite)
+        else seriesDao.setFavouriteForVersions(series.sourceId, series.variantKey, favourite)
 
     // --- Sync helpers: read/apply curation by stable stream URL ---
     suspend fun favouriteChannelUrls(): List<String> = channelDao.favouriteUrls()
@@ -760,8 +780,8 @@ class CatalogRepository(
         if (movieCategories.isNotEmpty() || seriesCategories.isNotEmpty()) {
             categoryDao.upsertAll(movieCategories + seriesCategories)
         }
-        if (movies.isNotEmpty()) movieDao.upsertAll(movies)
-        if (series.isNotEmpty()) seriesDao.upsertAll(series)
+        if (movies.isNotEmpty()) movieDao.upsertAll(stampedMovies(movies, movieCategories))
+        if (series.isNotEmpty()) seriesDao.upsertAll(stampedSeries(series, seriesCategories))
     }
 
     /**
@@ -812,12 +832,14 @@ class CatalogRepository(
             }
         }
         if (settings.moviesEnabled.value) {
-            categoryDao.replaceForSource(source.id, StreamKind.MOVIE, categoriesOf(StreamKind.MOVIE))
-            movieDao.replaceForSource(source.id, parsed.movies)
+            val categories = categoriesOf(StreamKind.MOVIE)
+            categoryDao.replaceForSource(source.id, StreamKind.MOVIE, categories)
+            movieDao.replaceForSource(source.id, stampedMovies(parsed.movies, categories))
         }
         if (settings.seriesEnabled.value) {
-            categoryDao.replaceForSource(source.id, StreamKind.SERIES, categoriesOf(StreamKind.SERIES))
-            seriesDao.replaceForSource(source.id, parsed.series)
+            val categories = categoriesOf(StreamKind.SERIES)
+            categoryDao.replaceForSource(source.id, StreamKind.SERIES, categories)
+            seriesDao.replaceForSource(source.id, stampedSeries(parsed.series, categories))
             episodeDao.replaceForSource(source.id, parsed.episodes)
         }
 
@@ -878,6 +900,7 @@ class CatalogRepository(
                 groupKey = n.groupKey,
                 qualityRank = rank,
                 qualityLabel = label,
+                searchKey = SearchText.keyOf(n.baseName, channel.name),
                 // Providers ship decorative separator rows ('#### UK GENERAL ####') as
                 // channels. They are headings, not channels — hide them on import.
                 hidden = channel.hidden || isSeparatorRow(channel.name),
@@ -918,7 +941,7 @@ class CatalogRepository(
                 val old = channels[i]
                 c.displayName != old.displayName || c.groupKey != old.groupKey ||
                     c.qualityLabel != old.qualityLabel || c.qualityRank != old.qualityRank ||
-                    c.hidden != old.hidden
+                    c.hidden != old.hidden || c.searchKey != old.searchKey
             }
             if (diff.isNotEmpty()) {
                 diff.chunked(500).forEach { channelDao.upsertAll(it) }
@@ -927,6 +950,88 @@ class CatalogRepository(
         }
         Log.i(TAG, "Re-normalised $changed channels with the current normaliser")
         changed
+    }
+
+    /** Movies with their search key, version key and flags, computed from name and category. */
+    private suspend fun stampedMovies(movies: List<Movie>, categories: List<Category>): List<Movie> {
+        val traits = categories.associate { it.id to VodVersions.categoryTraits(it.name) }
+        return movies.mapAcrossCores { movie ->
+            val s = VodVersions.stamp(movie.name, movie.year, movie.categoryId?.let(traits::get) ?: NO_TRAITS)
+            movie.copy(
+                searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
+                qualityRank = s.qualityRank, national = s.national, adult = s.adult,
+            )
+        }
+    }
+
+    private suspend fun stampedSeries(series: List<Series>, categories: List<Category>): List<Series> {
+        val traits = categories.associate { it.id to VodVersions.categoryTraits(it.name) }
+        return series.mapAcrossCores { show ->
+            val s = VodVersions.stamp(show.name, show.year, show.categoryId?.let(traits::get) ?: NO_TRAITS)
+            show.copy(
+                searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
+                qualityRank = s.qualityRank, national = s.national, adult = s.adult,
+            )
+        }
+    }
+
+    /**
+     * Re-stamps every stored movie and show with the current [VodVersions] rules, locally. The same
+     * idea as [renormalizeAll]: the stamps are computed at import, so without this an upgrade (or a
+     * rule change) would wait for the next playlist download to reach rows already on disk. Bump
+     * [VOD_STAMP_VERSION] to trigger it.
+     *
+     * Paged by id with a narrow projection and written one page per transaction (see the scale notes
+     * in CLAUDE.md), and only rows whose stamp actually changed are written. On a car head unit the
+     * first run (52,000 titles, every row written) took about half a minute in the background.
+     */
+    suspend fun restampVod(): Int = withContext(Dispatchers.IO) {
+        val started = System.nanoTime()
+        val changed = restamp(StreamKind.MOVIE, { after, n -> movieDao.stampsAfter(after, n) }, { movieDao.setStamps(it) }) +
+            restamp(StreamKind.SERIES, { after, n -> seriesDao.stampsAfter(after, n) }, { seriesDao.setStamps(it) })
+        Log.i(TAG, "Re-stamped $changed movies and shows in ${(System.nanoTime() - started) / 1_000_000} ms")
+        _vodRevision.value++
+        changed
+    }
+
+    private suspend fun restamp(
+        kind: StreamKind,
+        page: suspend (afterId: Long, limit: Int) -> List<VodStampRow>,
+        write: suspend (List<VodStampRow>) -> Unit,
+    ): Int {
+        val traits = categoryDao.allByKind(kind).associate { (it.sourceId to it.id) to VodVersions.categoryTraits(it.name) }
+        var after = 0L
+        var changed = 0
+        while (true) {
+            val rows = page(after, STAMP_PAGE)
+            if (rows.isEmpty()) break
+            val updates = rows.mapAcrossCores { row ->
+                val s = VodVersions.stamp(row.name, row.year, row.categoryId?.let { traits[row.sourceId to it] } ?: NO_TRAITS)
+                row.copy(
+                    searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
+                    qualityRank = s.qualityRank, national = s.national, adult = s.adult,
+                ).takeIf { it != row }
+            }.filterNotNull()
+            if (updates.isNotEmpty()) write(updates)
+            changed += updates.size
+            after = rows.last().id
+        }
+        return changed
+    }
+
+    /**
+     * [map] split over the CPU cores. Stamping is regex work, about 12 s for 50,000 titles on a car
+     * head unit when done on one core; the rules are pure, so the titles can be stamped in parallel.
+     */
+    private suspend fun <T, R> List<T>.mapAcrossCores(transform: (T) -> R): List<R> {
+        val cores = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        if (size < 64 || cores == 1) return map(transform)
+        return coroutineScope {
+            chunked((size + cores - 1) / cores)
+                .map { chunk -> async(Dispatchers.Default) { chunk.map(transform) } }
+                .awaitAll()
+                .flatten()
+        }
     }
 
     /** Best-effort category-id → name map for a set of channels. */
@@ -989,7 +1094,20 @@ class CatalogRepository(
          * already-imported channels. The app compares it against a stored value on launch
          * and runs [renormalizeAll] once when it moves.
          */
-        const val NORMALIZER_VERSION = 2
+        const val NORMALIZER_VERSION = 3
+
+        /**
+         * Bump this whenever [VodVersions] or [app.opentv.data.parser.AdultContent] changes what they
+         * stamp, so stored movies and shows are re-stamped once on the next launch ([restampVod]).
+         * Version 1 is the first stamp, filling in rows that predate the columns.
+         */
+        const val VOD_STAMP_VERSION = 1
+
+        /** Rows per page and per transaction for [restampVod]. */
+        private const val STAMP_PAGE = 500
+
+        /** A title with no category (or one not on disk) gets nothing from it. */
+        private val NO_TRAITS = VodVersions.CategoryTraits()
 
         /**
          * Bump this whenever playlist import changes what lands where (live / movies / series), so
