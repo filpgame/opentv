@@ -59,7 +59,7 @@ class Converters {
         PlaybackPosition::class,
         Profile::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -279,16 +279,42 @@ abstract class OpenTvDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v12 → v13: accent-blind search and version folding. Adds the import-time keys and flags to
+         * movies and series (see [app.opentv.data.parser.VodVersions.stamp]) and a search key to
+         * channels. Every column is NOT NULL with the same DEFAULT as its @ColumnInfo so the schema
+         * check passes; existing rows start blank and [app.opentv.OpenTvApp] fills them in once, in
+         * pages, because computing them here would hold the database closed for seconds on a big
+         * playlist.
+         */
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in listOf("movies", "series")) {
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `searchKey` TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `variantKey` TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `subtitled` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `qualityRank` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `national` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `adult` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_${table}_variantKey` ON `$table` (`variantKey`)")
+                }
+                db.execSQL("ALTER TABLE `channels` ADD COLUMN `searchKey` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Every migration, oldest first. Shared with the migration test. */
+        internal val MIGRATIONS = arrayOf(
+            MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+            MIGRATION_11_12, MIGRATION_12_13,
+        )
+
         fun build(context: Context): OpenTvDatabase =
             Room.databaseBuilder(context, OpenTvDatabase::class.java, "opentv.db")
                 // WAL keeps guide writes from blocking guide reads, so a background EPG
                 // refresh cannot make the UI stutter on a slow TV box.
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(
-                    MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                    MIGRATION_11_12,
-                )
+                .addMigrations(*MIGRATIONS)
                 /*
                  * Pre-1.0 policy: schema changes drop and rebuild the database. Everything
                  * in it is re-derivable from the provider (one sync away) except favourites

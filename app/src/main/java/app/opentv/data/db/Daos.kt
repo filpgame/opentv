@@ -9,6 +9,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
@@ -24,10 +25,59 @@ import app.opentv.data.model.Programme
 import app.opentv.data.model.Series
 import app.opentv.data.model.Source
 import app.opentv.data.model.StreamKind
+import app.opentv.data.parser.SearchText
+import androidx.sqlite.db.SimpleSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /** Rows per upsert statement. Keeps a 40,000-channel playlist from building one huge query. */
 private const val UPSERT_CHUNK = 500
+
+/**
+ * The tolerant, ranked title search shared by channels, movies and series, over their stored
+ * `searchKey` ([SearchText.keyOf]). Null when the query has nothing searchable left.
+ *
+ * Every word must appear, in any order, so `velozes 10` finds `Velozes & Furiosos 10 4K` where the
+ * old `name LIKE '%velozes 10%'` found nothing. The order is decided here, before the `LIMIT`, so a
+ * common word (`amor`, 900 titles) keeps its best matches rather than the alphabetically first 200:
+ * a title that starts with what was typed, then one with a word that does, then one where more of
+ * the words start a word, then [tieBreak].
+ *
+ * A raw query because the number of words varies. Only [filter], [orderFirst] and [tieBreak] are
+ * spliced into the SQL, and they are constants from the DAOs; the user's words are bound arguments.
+ */
+internal fun titleSearchQuery(
+    table: String,
+    query: String,
+    filter: String?,
+    orderFirst: String?,
+    tieBreak: String,
+    limit: Int,
+): SupportSQLiteQuery? {
+    val words = SearchText.tokens(query)
+    if (words.isEmpty()) return null
+    val phrase = SearchText.normalize(query)
+    val args = ArrayList<Any>()
+    val where = buildList {
+        words.forEach { add("searchKey LIKE ?"); args += "%$it%" }
+        filter?.let { add(it) }
+    }.joinToString(" AND ")
+    args += " $phrase%"
+    args += "% $phrase%"
+    words.forEach { args += "% $it%" }
+    args += limit
+    val sql = buildString {
+        append("SELECT * FROM `$table` WHERE ").append(where)
+        append(" ORDER BY ")
+        orderFirst?.let { append(it).append(", ") }
+        append("CASE WHEN searchKey LIKE ? THEN 0 WHEN searchKey LIKE ? THEN 1 ELSE 2 END, ")
+        append(words.joinToString(" + ", prefix = "(", postfix = ") DESC, ") { "(searchKey LIKE ?)" })
+        append(tieBreak)
+        append(" LIMIT ?")
+    }
+    return SimpleSQLiteQuery(sql, args.toArray())
+}
 
 @Dao
 interface SourceDao {
@@ -133,27 +183,18 @@ interface ChannelDao {
     )
     suspend fun channelCountsByCategory(): List<CategoryChannelCount>
 
-    @Query(
-        """
-        SELECT * FROM channels
-        WHERE hidden = 0
-          AND (displayName LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%')
-        ORDER BY favourite DESC, sortIndex, displayName
-        LIMIT :limit
-        """
-    )
-    fun search(query: String, limit: Int = 200): Flow<List<Channel>>
+    @RawQuery(observedEntities = [Channel::class])
+    fun observeSearch(query: SupportSQLiteQuery): Flow<List<Channel>>
+
+    /** Accent-blind, every-word search; favourites first, then by match. See [titleSearchQuery]. */
+    fun search(query: String, limit: Int = 200): Flow<List<Channel>> =
+        titleSearchQuery("channels", query, "hidden = 0", "favourite DESC", "sortIndex, displayName", limit)
+            ?.let { observeSearch(it) } ?: flowOf(emptyList())
 
     /** Like [search] but keeps hidden channels in — the channel manager needs them to unhide. */
-    @Query(
-        """
-        SELECT * FROM channels
-        WHERE (displayName LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%')
-        ORDER BY hidden, favourite DESC, sortIndex, displayName
-        LIMIT :limit
-        """
-    )
-    fun searchIncludingHidden(query: String, limit: Int = 200): Flow<List<Channel>>
+    fun searchIncludingHidden(query: String, limit: Int = 200): Flow<List<Channel>> =
+        titleSearchQuery("channels", query, null, "hidden, favourite DESC", "sortIndex, displayName", limit)
+            ?.let { observeSearch(it) } ?: flowOf(emptyList())
 
     @Query("SELECT * FROM channels WHERE id = :id")
     suspend fun byId(id: Long): Channel?
@@ -491,34 +532,64 @@ interface ProgrammeDao {
     suspend fun deleteForFeed(feedId: Long)
 }
 
+/**
+ * The adult filter every VOD read takes: `includeAdult` false drops rows stamped adult (see
+ * [app.opentv.data.parser.AdultContent]). It is applied in SQL, before any `LIMIT`, or a quarter of
+ * a 30-title row would be spent on titles that are then hidden.
+ */
 @Dao
 interface MovieDao {
     @Query(
         """
         SELECT * FROM movies
-        WHERE (:categoryId IS NULL OR categoryId = :categoryId)
+        WHERE (:categoryId IS NULL OR categoryId = :categoryId) AND (:includeAdult OR adult = 0)
         ORDER BY addedMillis DESC, name
         """
     )
-    fun observe(categoryId: String?): Flow<List<Movie>>
+    fun observe(categoryId: String?, includeAdult: Boolean): Flow<List<Movie>>
 
-    @Query("SELECT * FROM movies WHERE favourite = 1 ORDER BY name")
-    fun observeFavourites(): Flow<List<Movie>>
+    /**
+     * One category's movies plus every other version of them, wherever the provider filed it: the
+     * subtitled copy of an action film lives in "Legendados", its 4K copy in "4K". The grid folds them
+     * into one poster whose badges and filters describe all of its versions. One query, with the
+     * category's keys as a subquery, so a 11,000-title category never meets the bound-variable cap.
+     * Rows not yet stamped (empty key) come back only for their own category.
+     */
+    @Query(
+        """
+        SELECT * FROM movies
+        WHERE (:includeAdult OR adult = 0)
+          AND (categoryId = :categoryId
+               OR (variantKey != '' AND variantKey IN (
+                   SELECT variantKey FROM movies WHERE categoryId = :categoryId AND variantKey != '')))
+        ORDER BY addedMillis DESC, name
+        """
+    )
+    fun observeCategoryWithVersions(categoryId: String, includeAdult: Boolean): Flow<List<Movie>>
 
-    @Query("SELECT * FROM movies WHERE name LIKE '%' || :query || '%' ORDER BY name LIMIT :limit")
-    fun search(query: String, limit: Int = 200): Flow<List<Movie>>
+    /** "My list". Favouriting marks every version of a title, so the list is already complete. */
+    @Query("SELECT * FROM movies WHERE favourite = 1 AND (:includeAdult OR adult = 0) ORDER BY name")
+    fun observeFavourites(includeAdult: Boolean): Flow<List<Movie>>
+
+    @RawQuery(observedEntities = [Movie::class])
+    fun observeSearch(query: SupportSQLiteQuery): Flow<List<Movie>>
+
+    /** Accent-blind, every-word, ranked title search. See [titleSearchQuery]. */
+    fun search(query: String, includeAdult: Boolean, limit: Int = 200): Flow<List<Movie>> =
+        titleSearchQuery("movies", query, if (includeAdult) null else "adult = 0", null, "length(searchKey), name", limit)
+            ?.let { observeSearch(it) } ?: flowOf(emptyList())
 
     /** Newest-first, for the "Recently Added" home row. Reactive so it fills in as VOD sync lands. */
-    @Query("SELECT * FROM movies ORDER BY addedMillis DESC LIMIT :limit")
-    fun observeRecentlyAdded(limit: Int): Flow<List<Movie>>
+    @Query("SELECT * FROM movies WHERE (:includeAdult OR adult = 0) ORDER BY addedMillis DESC LIMIT :limit")
+    fun observeRecentlyAdded(limit: Int, includeAdult: Boolean): Flow<List<Movie>>
 
     /**
      * Every movie, newest first — the working set for the Kotlin-side feeds (by-genre grouping,
      * genre-affinity recommendations, more-like-this). One pass over a few thousand rows is cheap;
      * per-genre `LIKE` queries would multiply round-trips and risk substring false positives.
      */
-    @Query("SELECT * FROM movies ORDER BY addedMillis DESC")
-    suspend fun all(): List<Movie>
+    @Query("SELECT * FROM movies WHERE (:includeAdult OR adult = 0) ORDER BY addedMillis DESC")
+    suspend fun all(includeAdult: Boolean): List<Movie>
 
     /** How many movies are on disk. A cheap COUNT the home feeds use to tell "the library grew"
      *  from "same as last time" without loading every row (see VodViewModel.loadHomeFeeds). */
@@ -534,11 +605,18 @@ interface MovieDao {
         SELECT * FROM movies
         WHERE sourceId = :sourceId AND id != :excludeId
           AND (:categoryId IS NULL OR categoryId = :categoryId)
+          AND (:includeAdult OR adult = 0)
         ORDER BY rating DESC, addedMillis DESC
         LIMIT :limit
         """
     )
-    suspend fun similarByCategory(sourceId: Long, categoryId: String?, excludeId: Long, limit: Int): List<Movie>
+    suspend fun similarByCategory(
+        sourceId: Long,
+        categoryId: String?,
+        excludeId: Long,
+        limit: Int,
+        includeAdult: Boolean,
+    ): List<Movie>
 
     /**
      * Movies a person is billed in — the Plex-style "click an actor, see everything with them".
@@ -570,12 +648,29 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE id = :id")
     suspend fun byId(id: Long): Movie?
 
+    /** Every version of one title within its source, for the detail page's picker. */
+    @Query(
+        """
+        SELECT * FROM movies
+        WHERE sourceId = :sourceId AND variantKey = :variantKey AND (:includeAdult OR adult = 0)
+        """
+    )
+    suspend fun versionsOf(sourceId: Long, variantKey: String, includeAdult: Boolean): List<Movie>
+
+    /** Every row sharing one of [keys], across sources; callers keep the list to a few hundred keys. */
+    @Query("SELECT * FROM movies WHERE variantKey IN (:keys) AND (:includeAdult OR adult = 0)")
+    suspend fun withVariantKeys(keys: List<String>, includeAdult: Boolean): List<Movie>
+
     /** Stream URL is the cross-device key: the same film has the same URL on the same provider. */
     @Query("SELECT * FROM movies WHERE streamUrl = :url LIMIT 1")
     suspend fun byStreamUrl(url: String): Movie?
 
     @Query("UPDATE movies SET favourite = :favourite WHERE id = :id")
     suspend fun setFavourite(id: Long, favourite: Boolean)
+
+    /** Favourites follow the title, not one copy of it, like a channel's quality variants do. */
+    @Query("UPDATE movies SET favourite = :favourite WHERE sourceId = :sourceId AND variantKey = :variantKey")
+    suspend fun setFavouriteForVersions(sourceId: Long, variantKey: String, favourite: Boolean)
 
     // --- Sync: favourites by stream URL ---
     @Query("SELECT streamUrl FROM movies WHERE favourite = 1")
@@ -610,29 +705,86 @@ interface MovieDao {
         rows.chunked(UPSERT_CHUNK).forEach { insertOrReplace(it) }
         stale.chunked(UPSERT_CHUNK).forEach { deleteByIds(it) }
     }
+
+    // --- Re-stamping stored rows (see CatalogRepository.restampVod) ---
+
+    /** One page of what stamping reads and writes, by id. Narrow and paged; see ChannelDao.matchKeysAfter. */
+    @Query(
+        """
+        SELECT id, name, year, categoryId, sourceId, searchKey, variantKey, subtitled, qualityRank,
+               national, adult
+        FROM movies WHERE id > :afterId ORDER BY id LIMIT :limit
+        """
+    )
+    suspend fun stampsAfter(afterId: Long, limit: Int): List<VodStampRow>
+
+    @Query(
+        """
+        UPDATE movies SET searchKey = :searchKey, variantKey = :variantKey, subtitled = :subtitled,
+            qualityRank = :qualityRank, national = :national, adult = :adult
+        WHERE id = :id
+        """
+    )
+    suspend fun setStamp(
+        id: Long,
+        searchKey: String,
+        variantKey: String,
+        subtitled: Boolean,
+        qualityRank: Int,
+        national: Boolean,
+        adult: Boolean,
+    )
+
+    /** One transaction per page, so a re-stamp re-runs the open lists once per page, not per row. */
+    @Transaction
+    suspend fun setStamps(rows: List<VodStampRow>) {
+        rows.forEach { setStamp(it.id, it.searchKey, it.variantKey, it.subtitled, it.qualityRank, it.national, it.adult) }
+    }
 }
 
+/** See [MovieDao] for the adult filter, the version queries and the stamping. */
 @Dao
 interface SeriesDao {
     @Query(
         """
         SELECT * FROM series
-        WHERE (:categoryId IS NULL OR categoryId = :categoryId)
+        WHERE (:categoryId IS NULL OR categoryId = :categoryId) AND (:includeAdult OR adult = 0)
         ORDER BY addedMillis DESC, name
         """
     )
-    fun observe(categoryId: String?): Flow<List<Series>>
+    fun observe(categoryId: String?, includeAdult: Boolean): Flow<List<Series>>
 
-    @Query("SELECT * FROM series WHERE name LIKE '%' || :query || '%' ORDER BY name LIMIT :limit")
-    fun search(query: String, limit: Int = 200): Flow<List<Series>>
+    /** See [MovieDao.observeCategoryWithVersions]: `The Boys` lives under Prime, `The Boys [L]` under "Legendadas". */
+    @Query(
+        """
+        SELECT * FROM series
+        WHERE (:includeAdult OR adult = 0)
+          AND (categoryId = :categoryId
+               OR (variantKey != '' AND variantKey IN (
+                   SELECT variantKey FROM series WHERE categoryId = :categoryId AND variantKey != '')))
+        ORDER BY addedMillis DESC, name
+        """
+    )
+    fun observeCategoryWithVersions(categoryId: String, includeAdult: Boolean): Flow<List<Series>>
+
+    @Query("SELECT * FROM series WHERE favourite = 1 AND (:includeAdult OR adult = 0) ORDER BY name")
+    fun observeFavourites(includeAdult: Boolean): Flow<List<Series>>
+
+    @RawQuery(observedEntities = [Series::class])
+    fun observeSearch(query: SupportSQLiteQuery): Flow<List<Series>>
+
+    /** Accent-blind, every-word, ranked title search. See [titleSearchQuery]. */
+    fun search(query: String, includeAdult: Boolean, limit: Int = 200): Flow<List<Series>> =
+        titleSearchQuery("series", query, if (includeAdult) null else "adult = 0", null, "length(searchKey), name", limit)
+            ?.let { observeSearch(it) } ?: flowOf(emptyList())
 
     /** Newest-first, for the "Recently Added" home row. Reactive so it fills in as VOD sync lands. */
-    @Query("SELECT * FROM series ORDER BY addedMillis DESC LIMIT :limit")
-    fun observeRecentlyAdded(limit: Int): Flow<List<Series>>
+    @Query("SELECT * FROM series WHERE (:includeAdult OR adult = 0) ORDER BY addedMillis DESC LIMIT :limit")
+    fun observeRecentlyAdded(limit: Int, includeAdult: Boolean): Flow<List<Series>>
 
     /** Every series, newest first — working set for the Kotlin-side by-genre / more-like-this feeds. */
-    @Query("SELECT * FROM series ORDER BY addedMillis DESC")
-    suspend fun all(): List<Series>
+    @Query("SELECT * FROM series WHERE (:includeAdult OR adult = 0) ORDER BY addedMillis DESC")
+    suspend fun all(includeAdult: Boolean): List<Series>
 
     /** How many series are on disk — the cheap "did the library grow" check for the home feeds. */
     @Query("SELECT COUNT(*) FROM series")
@@ -644,11 +796,18 @@ interface SeriesDao {
         SELECT * FROM series
         WHERE sourceId = :sourceId AND id != :excludeId
           AND (:categoryId IS NULL OR categoryId = :categoryId)
+          AND (:includeAdult OR adult = 0)
         ORDER BY rating DESC, addedMillis DESC
         LIMIT :limit
         """
     )
-    suspend fun similarByCategory(sourceId: Long, categoryId: String?, excludeId: Long, limit: Int): List<Series>
+    suspend fun similarByCategory(
+        sourceId: Long,
+        categoryId: String?,
+        excludeId: Long,
+        limit: Int,
+        includeAdult: Boolean,
+    ): List<Series>
 
     /** Series a person is billed in — the show half of "click an actor, see everything". See
      *  [MovieDao.moviesWithActor]. */
@@ -665,8 +824,22 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): Series?
 
+    @Query(
+        """
+        SELECT * FROM series
+        WHERE sourceId = :sourceId AND variantKey = :variantKey AND (:includeAdult OR adult = 0)
+        """
+    )
+    suspend fun versionsOf(sourceId: Long, variantKey: String, includeAdult: Boolean): List<Series>
+
+    @Query("SELECT * FROM series WHERE variantKey IN (:keys) AND (:includeAdult OR adult = 0)")
+    suspend fun withVariantKeys(keys: List<String>, includeAdult: Boolean): List<Series>
+
     @Query("UPDATE series SET favourite = :favourite WHERE id = :id")
     suspend fun setFavourite(id: Long, favourite: Boolean)
+
+    @Query("UPDATE series SET favourite = :favourite WHERE sourceId = :sourceId AND variantKey = :variantKey")
+    suspend fun setFavouriteForVersions(sourceId: Long, variantKey: String, favourite: Boolean)
 
     // --- Sync: favourites by provider series id (series carry no stream URL) ---
     @Query("SELECT seriesId FROM series WHERE favourite = 1")
@@ -700,7 +873,53 @@ interface SeriesDao {
         rows.chunked(UPSERT_CHUNK).forEach { insertOrReplace(it) }
         stale.chunked(UPSERT_CHUNK).forEach { deleteByIds(it) }
     }
+
+    @Query(
+        """
+        SELECT id, name, year, categoryId, sourceId, searchKey, variantKey, subtitled, qualityRank,
+               national, adult
+        FROM series WHERE id > :afterId ORDER BY id LIMIT :limit
+        """
+    )
+    suspend fun stampsAfter(afterId: Long, limit: Int): List<VodStampRow>
+
+    @Query(
+        """
+        UPDATE series SET searchKey = :searchKey, variantKey = :variantKey, subtitled = :subtitled,
+            qualityRank = :qualityRank, national = :national, adult = :adult
+        WHERE id = :id
+        """
+    )
+    suspend fun setStamp(
+        id: Long,
+        searchKey: String,
+        variantKey: String,
+        subtitled: Boolean,
+        qualityRank: Int,
+        national: Boolean,
+        adult: Boolean,
+    )
+
+    @Transaction
+    suspend fun setStamps(rows: List<VodStampRow>) {
+        rows.forEach { setStamp(it.id, it.searchKey, it.variantKey, it.subtitled, it.qualityRank, it.national, it.adult) }
+    }
 }
+
+/** Projection for the `stampsAfter` pages: a VOD row's inputs to stamping and its stored stamp. */
+data class VodStampRow(
+    val id: Long,
+    val name: String,
+    val year: Int?,
+    val categoryId: String?,
+    val sourceId: Long,
+    val searchKey: String,
+    val variantKey: String,
+    val subtitled: Boolean,
+    val qualityRank: Int,
+    val national: Boolean,
+    val adult: Boolean,
+)
 
 @Dao
 interface EpisodeDao {

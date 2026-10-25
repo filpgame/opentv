@@ -104,8 +104,8 @@ class PlaylistSyncTest {
         assertThat(result).isEqualTo(CatalogRepository.SyncResult.Success(2, 2, 2))
         assertThat(db.channels().forSource(source.id).map { it.name })
             .containsExactly("GLOBO SP [FHD]", "GLOBO SP [HD]")
-        assertThat(db.movies().all().map { it.name }).containsExactly("Ação Mutante", "007: Cassino Royale")
-        assertThat(db.series().all().map { it.name }).containsExactly("Elsbeth [L]", "Elsbeth")
+        assertThat(db.movies().all(includeAdult = true).map { it.name }).containsExactly("Ação Mutante", "007: Cassino Royale")
+        assertThat(db.series().all(includeAdult = true).map { it.name }).containsExactly("Elsbeth [L]", "Elsbeth")
         assertThat(db.episodes().keysForSource(source.id)).hasSize(3)
         assertThat(categories(StreamKind.MOVIE)).containsExactly("#", "A").inOrder()
         assertThat(categories(StreamKind.SERIES)).containsExactly("E")
@@ -125,14 +125,14 @@ class PlaylistSyncTest {
         assertThat(categories(StreamKind.SERIES)).containsExactly("Séries | Drama")
         // Both quality variants survive their shared tvg-id.
         assertThat(db.channels().forSource(source.id)).hasSize(2)
-        assertThat(db.movies().all().map { it.posterUrl }).containsExactly("http://img.invalid/acao.jpg", null)
+        assertThat(db.movies().all(includeAdult = true).map { it.posterUrl }).containsExactly("http://img.invalid/acao.jpg", null)
     }
 
     @Test
     fun `a refresh keeps row ids and favourites and drops what the playlist no longer lists`() = runTest {
         served["m3u"] = PLAIN
         sync()
-        val movie = db.movies().all().single { it.name == "Ação Mutante" }
+        val movie = db.movies().all(includeAdult = true).single { it.name == "Ação Mutante" }
         db.movies().setFavourite(movie.id, true)
         val episodeIds = db.episodes().keysForSource(source.id).associate { it.key to it.id }
 
@@ -143,7 +143,7 @@ class PlaylistSyncTest {
             "\n#EXTINF:-1 group-title=\"Filmes | Ação\",Novo Filme\nhttp://panel.invalid:8080/movie/u/p/203.mp4"
         sync(now = 2_000L)
 
-        val movies = db.movies().all()
+        val movies = db.movies().all(includeAdult = true)
         assertThat(movies.map { it.name }).containsExactly("Ação Mutante", "Novo Filme")
         val kept = movies.single { it.name == "Ação Mutante" }
         assertThat(kept.id).isEqualTo(movie.id)

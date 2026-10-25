@@ -5,8 +5,7 @@
  */
 package app.opentv.data.parser
 
-import app.opentv.data.model.Movie
-import app.opentv.data.model.Series
+import app.opentv.data.model.VodTitle
 
 /**
  * Turns the movie/series titles IPTV providers actually ship into clean, Plex-style titles.
@@ -32,8 +31,8 @@ import app.opentv.data.model.Series
  * stripping a *leading* prefix, so an interior " - " in a real title (`Apple Music Live - Ed
  * Sheeran`) is left intact.
  *
- * Pure and testable: [clean] is a total function of its input. The raw provider name is still what
- * search and grouping index on; only the displayed string changes (see [displayTitle]).
+ * Pure and testable: [clean] is a total function of its input. The raw name stays the stored `name`;
+ * the search and version-folding keys derived from both are stored at import by [VodVersions.stamp].
  */
 object VodTitleCleaner {
 
@@ -97,16 +96,19 @@ object VodTitleCleaner {
 
     /**
      * Cleans a raw provider title. Strips a leading language/country/quality prefix (and its
-     * separators), removes stray quality tags anywhere, and folds superscript decoration — while
-     * preserving the real title and any trailing `(year)`. A title with no provider junk comes back
-     * unchanged. Never returns blank: if cleaning would empty the string, the trimmed original wins.
+     * separators), removes stray quality tags and version tags (`[L]`, `[DV]`, `[Hybrid]`, see
+     * [VodVersions.stripVersionTags]) anywhere, and folds superscript decoration — while preserving
+     * the real title and any trailing `(year)`. The versions of one title fold into one poster, so
+     * what tells them apart is shown as badges and in the version picker, not in the title. A title
+     * with no provider junk comes back unchanged. Never returns blank: if cleaning would empty the
+     * string, the trimmed original wins.
      */
     fun clean(raw: String): String {
         val folded = ChannelNameNormalizer.foldSuperscripts(raw).trim()
         if (folded.isEmpty()) return raw.trim()
 
         val deprefixed = stripLeadingPrefix(folded)
-        val dequalified = stripStrayQuality(deprefixed)
+        val dequalified = stripStrayQuality(VodVersions.stripVersionTags(deprefixed))
         val detrailed = stripTrailingCodes(dequalified)
         val tidied = MULTI_SPACE.replace(detrailed, " ").trim().trim(*EDGE_JUNK).trim()
         return tidied.ifBlank { folded }
@@ -191,8 +193,5 @@ object VodTitleCleaner {
     }
 }
 
-/** The clean, display-ready title for a movie — the VOD analogue of `Channel.shownName`. */
-val Movie.displayTitle: String get() = VodTitleCleaner.clean(name)
-
-/** The clean, display-ready title for a series. */
-val Series.displayTitle: String get() = VodTitleCleaner.clean(name)
+/** The clean, display-ready title for a movie or show — the VOD analogue of `Channel.shownName`. */
+val VodTitle.displayTitle: String get() = VodTitleCleaner.clean(name)
