@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Tallenna avain</string>
     <string name="settings_tmdb_saved">TMDB-avain tallennettu</string>
     <string name="settings_tmdb_active">Aktiivinen</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — kanavien hallinta</string>
+    <string name="webpage_hint">Muutokset tulevat voimaan TV:ssäsi heti, kun teet ne.</string>
+    <string name="webpage_unreachable">TV:hen ei saatu yhteyttä — oletko yhä samassa wifissä?</string>
+    <string name="webpage_privacy">Tämän sivun tarjoaa TV:si omassa verkossasi — OpenTV-tiliä tai OpenTV-palvelinta ei ole. Mikään täällä tekemäsi muutos ei poistu kotoasi.</string>
+    <string name="webpage_field_type">Tyyppi</string>
+    <string name="webpage_field_name_optional">Nimi (valinnainen)</string>
+    <string name="webpage_field_username">Käyttäjätunnus</string>
+    <string name="webpage_field_password">Salasana</string>
+    <string name="webpage_test">Testaa</string>
+    <string name="webpage_testing">Testataan…</string>
+    <string name="webpage_test_failed">Testi epäonnistui</string>
+    <string name="webpage_test_ok_default">Näyttää hyvältä.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Lisää Xtream-, M3U- tai Stalker-portaali tästä — oikea näppäimistö voittaa TV:n kaukosäätimen. Kirjautumistietosi pysyvät TV:ssä.</string>
+    <string name="webpage_prov_name_placeholder">Palveluntarjoajani</string>
+    <string name="webpage_prov_add">Lisää ja lataa kanavat</string>
+    <string name="webpage_enter_url">Anna URL-osoite.</string>
+    <string name="webpage_user_pass_required">Käyttäjätunnus ja salasana vaaditaan.</string>
+    <string name="webpage_mac_required">MAC-osoite vaaditaan.</string>
+    <string name="webpage_adding">Lisätään ja ladataan kanavia…</string>
+    <string name="webpage_added">Lisätty — kanavia ladattu: %1$d.</string>
+    <string name="webpage_add_failed">Palveluntarjoajaa ei voitu lisätä</string>
+    <string name="webpage_err_fill_required">Täytä tämän palveluntarjoajatyypin pakolliset kentät.</string>
+    <string name="webpage_err_save_source">Lähdettä ei voitu tallentaa.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) synkronointiin</string>
+    <string name="webpage_nas_hint">Verkkolevy, jonka kautta laitteesi synkronoivat suosikit ja katseluhistorian. Tallennetaan suoraan TV:hesi — salasana pysyy TV:ssä.</string>
+    <string name="webpage_nas_server">Palvelin (IP-osoite)</string>
+    <string name="webpage_nas_share">Jako</string>
+    <string name="webpage_nas_folder">Kansio (valinnainen)</string>
+    <string name="webpage_nas_folder_placeholder">(jätä tyhjäksi)</string>
+    <string name="webpage_nas_save">Tallenna NAS</string>
+    <string name="webpage_nas_test">Testaa yhteys</string>
+    <string name="webpage_nas_password_unchanged">•••• (ei muutettu)</string>
+    <string name="webpage_nas_required">Palvelin ja jako vaaditaan.</string>
+    <string name="webpage_nas_saving">Tallennetaan ja testataan…</string>
+    <string name="webpage_nas_connected">Yhdistetty NAS-laitteeseen. ✓</string>
+    <string name="webpage_nas_failed">NAS-laitteeseen ei saatu yhteyttä: %1$s</string>
+    <string name="webpage_nas_check_details">tarkista tiedot</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Suodata kategorioita…</string>
+    <string name="webpage_no_categories_match">Mikään kategoria ei täsmää.</string>
+    <string name="webpage_no_channels_yet">Ei vielä kanavia — aloita lisäämällä palveluntarjoaja yllä.</string>
+    <string name="webpage_channels_hint">Napauta nimeä nimetäksesi uudelleen. Tähti suosikiksi, silmä piilottaa, nuolilla vaihdat järjestystä.</string>
+    <string name="webpage_channel_number">Nro %1$d</string>
+    <string name="webpage_hidden_tap_show">Piilotettu — napauta näyttääksesi</string>
+    <string name="webpage_showing_tap_hide">Näkyvissä — napauta piilottaaksesi</string>
+    <string name="webpage_move_up">Siirrä ylös</string>
+    <string name="webpage_move_down">Siirrä alas</string>
+    <string name="webpage_favourited">Lisätty suosikkeihin</string>
+    <string name="webpage_unfavourited">Poistettu suosikeista</string>
+    <string name="webpage_hidden_from_guide">Piilotettu oppaasta</string>
+    <string name="webpage_showing_in_guide">Näkyy oppaassa</string>
+    <string name="webpage_renamed">Nimetty uudelleen</string>
+    <string name="webpage_rename_failed">Nimeä ei voitu tallentaa.</string>
+    <string name="webpage_order_saved">Järjestys tallennettu</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Määritä OpenTV</string>
+    <string name="pairpage_sub">Tämän täyttäminen täällä on helpompaa kuin kaukosäätimellä.</string>
+    <string name="pairpage_kind_xtream">Xtream-kirjautuminen</string>
+    <string name="pairpage_kind_m3u">M3U-soittolista</string>
+    <string name="pairpage_name_placeholder">Olohuoneen palveluntarjoaja</string>
+    <string name="pairpage_url_hint">Liitä koko rivi palveluntarjoajaltasi, jos se on helpompaa — ylimääräiset osat karsitaan pois.</string>
+    <string name="pairpage_field_code">TV:ssä näkyvä koodi</string>
+    <string name="pairpage_code_hint">Tästä tiedämme, että juuri sinä istut television edessä.</string>
+    <string name="pairpage_send">Lähetä TV:hen</string>
+    <string name="pairpage_privacy">Tämän sivun tarjoaa TV:si omassa verkossasi. Kirjoittamasi tiedot menevät suoraan sinne eikä minnekään muualle — OpenTV-tiliä tai OpenTV-palvelinta ei ole.</string>
+    <string name="pairpage_err_code">Koodi ei vastaa TV:ssä näkyvää koodia. Yrityksiä jäljellä: %1$d.</string>
+    <string name="pairpage_err_url">Täytä palvelimen osoite.</string>
+    <string name="pairpage_too_many_title">Liian monta yritystä</string>
+    <string name="pairpage_too_many_body">Aloita pariliitos uudelleen TV:ssä saadaksesi uuden koodin.</string>
+    <string name="pairpage_sent_title">Lähetetty TV:hesi</string>
+    <string name="pairpage_sent_body">Voit laskea puhelimen käsistäsi — loppu hoituu TV:ssä.</string>
 </resources>

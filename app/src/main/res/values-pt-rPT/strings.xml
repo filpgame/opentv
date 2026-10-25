@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Guardar chave</string>
     <string name="settings_tmdb_saved">Chave TMDB guardada</string>
     <string name="settings_tmdb_active">Ativa</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — gerir canais</string>
+    <string name="webpage_hint">As alterações aplicam-se de imediato à sua TV.</string>
+    <string name="webpage_unreachable">Não foi possível contactar a TV — ainda está na mesma wifi?</string>
+    <string name="webpage_privacy">Esta página é servida pela sua televisão, através da sua própria rede — não existe conta OpenTV nem servidor OpenTV. Nada do que alterar aqui sai de casa.</string>
+    <string name="webpage_field_type">Tipo</string>
+    <string name="webpage_field_name_optional">Nome (opcional)</string>
+    <string name="webpage_field_username">Nome de utilizador</string>
+    <string name="webpage_field_password">Palavra-passe</string>
+    <string name="webpage_test">Testar</string>
+    <string name="webpage_testing">A testar…</string>
+    <string name="webpage_test_failed">O teste falhou</string>
+    <string name="webpage_test_ok_default">Tudo em ordem.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Adicione aqui um fornecedor Xtream, M3U ou Stalker — um teclado a sério é melhor do que o telecomando. Os seus dados de acesso ficam na TV.</string>
+    <string name="webpage_prov_name_placeholder">O meu fornecedor</string>
+    <string name="webpage_prov_add">Adicionar e carregar canais</string>
+    <string name="webpage_enter_url">Introduza o URL.</string>
+    <string name="webpage_user_pass_required">O nome de utilizador e a palavra-passe são obrigatórios.</string>
+    <string name="webpage_mac_required">O endereço MAC é obrigatório.</string>
+    <string name="webpage_adding">A adicionar e a carregar canais…</string>
+    <string name="webpage_added">Adicionado — %1$d canais carregados.</string>
+    <string name="webpage_add_failed">Não foi possível adicionar o fornecedor</string>
+    <string name="webpage_err_fill_required">Preencha os campos obrigatórios para este tipo de fornecedor.</string>
+    <string name="webpage_err_save_source">Não foi possível guardar a fonte.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) para sincronização</string>
+    <string name="webpage_nas_hint">A unidade de rede através da qual os seus dispositivos sincronizam favoritos e histórico de visualização. Guardado diretamente na sua TV — a palavra-passe fica na TV.</string>
+    <string name="webpage_nas_server">Servidor (endereço IP)</string>
+    <string name="webpage_nas_share">Partilha</string>
+    <string name="webpage_nas_folder">Pasta (opcional)</string>
+    <string name="webpage_nas_folder_placeholder">(deixe em branco)</string>
+    <string name="webpage_nas_save">Guardar NAS</string>
+    <string name="webpage_nas_test">Testar ligação</string>
+    <string name="webpage_nas_password_unchanged">•••• (inalterada)</string>
+    <string name="webpage_nas_required">O servidor e a partilha são obrigatórios.</string>
+    <string name="webpage_nas_saving">A guardar e a testar…</string>
+    <string name="webpage_nas_connected">Ligado ao NAS. ✓</string>
+    <string name="webpage_nas_failed">Não foi possível ligar ao NAS: %1$s</string>
+    <string name="webpage_nas_check_details">verifique os dados</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Filtrar categorias…</string>
+    <string name="webpage_no_categories_match">Nenhuma categoria corresponde.</string>
+    <string name="webpage_no_channels_yet">Ainda sem canais — adicione primeiro um fornecedor acima.</string>
+    <string name="webpage_channels_hint">Toque num nome para o renomear. Estrela para favorito, olho para ocultar, setas para reordenar.</string>
+    <string name="webpage_channel_number">N.º %1$d</string>
+    <string name="webpage_hidden_tap_show">Oculto — toque para mostrar</string>
+    <string name="webpage_showing_tap_hide">Visível — toque para ocultar</string>
+    <string name="webpage_move_up">Mover para cima</string>
+    <string name="webpage_move_down">Mover para baixo</string>
+    <string name="webpage_favourited">Adicionado aos favoritos</string>
+    <string name="webpage_unfavourited">Removido dos favoritos</string>
+    <string name="webpage_hidden_from_guide">Oculto do guia</string>
+    <string name="webpage_showing_in_guide">Visível no guia</string>
+    <string name="webpage_renamed">Nome alterado</string>
+    <string name="webpage_rename_failed">Não foi possível guardar o nome.</string>
+    <string name="webpage_order_saved">Ordem guardada</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Configurar o OpenTV</string>
+    <string name="pairpage_sub">Preencher aqui é muito mais prático do que usar o telecomando.</string>
+    <string name="pairpage_kind_xtream">Início de sessão Xtream</string>
+    <string name="pairpage_kind_m3u">Lista M3U</string>
+    <string name="pairpage_name_placeholder">Fornecedor da sala</string>
+    <string name="pairpage_url_hint">Cole a linha completa do seu fornecedor se for mais fácil — os elementos a mais são removidos.</string>
+    <string name="pairpage_field_code">Código apresentado na TV</string>
+    <string name="pairpage_code_hint">É isto que confirma que está mesmo em frente à TV.</string>
+    <string name="pairpage_send">Enviar para a TV</string>
+    <string name="pairpage_privacy">Esta página é servida pela sua televisão, através da sua própria rede. O que escrever segue diretamente para ela e para mais lado nenhum — não existe conta OpenTV nem servidor OpenTV.</string>
+    <string name="pairpage_err_code">Este código não corresponde ao que aparece na TV. Tentativas restantes: %1$d.</string>
+    <string name="pairpage_err_url">Preencha o endereço do servidor.</string>
+    <string name="pairpage_too_many_title">Demasiadas tentativas</string>
+    <string name="pairpage_too_many_body">Inicie novamente o emparelhamento na TV para obter um novo código.</string>
+    <string name="pairpage_sent_title">Enviado para a sua TV</string>
+    <string name="pairpage_sent_body">Já pode pousar o telemóvel — o resto acontece na TV.</string>
 </resources>

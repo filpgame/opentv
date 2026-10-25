@@ -45,6 +45,7 @@ import android.content.Context
 import android.widget.Toast
 import app.opentv.R
 import app.opentv.core.AppSettings
+import app.opentv.core.LocaleUtils
 import app.opentv.core.SleepTimer
 import app.opentv.core.findActivity
 import app.opentv.data.work.SyncWorker
@@ -150,7 +151,7 @@ fun AppSettingsScreen(onBack: () -> Unit) {
                 changeLanguage(context, settings, "")
             }
             // Each language is listed in its own name (endonym), the convention users expect.
-            OpenTvLanguages.forEach { (tag, name) ->
+            LocaleUtils.languages.forEach { (tag, name) ->
                 ThemeOption(name, language == tag) { changeLanguage(context, settings, tag) }
             }
             Spacer(Modifier.height(4.dp))
@@ -267,50 +268,6 @@ private fun TmdbKeySection(settings: AppSettings) {
         }
     }
 }
-
-/**
- * The UI languages OpenTV ships translations for, each labelled with its own endonym. The tag is
- * both the stored language tag and the resource qualifier (values-<tag>), so adding a language is
- * just a new `values-xx/strings.xml` plus a line here.
- *
- * Bare "pt" is Brazilian: values-pt holds it so that a device set to plain "Português" (no region,
- * which Android never matches against a `-rBR` folder) gets it too. European Portuguese is the
- * "pt-PT" tag, i.e. values-pt-rPT.
- */
-private val OpenTvLanguages: List<Pair<String, String>> = listOf(
-    "en" to "English",
-    "es" to "Español",
-    "fr" to "Français",
-    "de" to "Deutsch",
-    "it" to "Italiano",
-    "pt" to "Português (Brasil)",
-    "pt-PT" to "Português (Portugal)",
-    "nl" to "Nederlands",
-    "pl" to "Polski",
-    "ru" to "Русский",
-    "tr" to "Türkçe",
-    "ar" to "العربية",
-    "zh" to "中文",
-    "ja" to "日本語",
-    "ko" to "한국어",
-    "hi" to "हिन्दी",
-    "sv" to "Svenska",
-    "da" to "Dansk",
-    "fi" to "Suomi",
-    "nb" to "Norsk",
-    "cs" to "Čeština",
-    "el" to "Ελληνικά",
-    "ro" to "Română",
-    "hu" to "Magyar",
-    "uk" to "Українська",
-    "id" to "Bahasa Indonesia",
-    "th" to "ไทย",
-    "vi" to "Tiếng Việt",
-    "bg" to "Български",
-    "sk" to "Slovenčina",
-    "hr" to "Hrvatski",
-    "fa" to "فارسی",
-)
 
 /** Persist the chosen language and recreate the activity so the whole UI reloads translated. */
 private fun changeLanguage(context: Context, settings: AppSettings, tag: String) {

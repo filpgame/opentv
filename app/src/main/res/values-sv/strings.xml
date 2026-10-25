@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Spara nyckel</string>
     <string name="settings_tmdb_saved">TMDB-nyckel sparad</string>
     <string name="settings_tmdb_active">Aktiv</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — hantera kanaler</string>
+    <string name="webpage_hint">Ändringarna gäller på din TV direkt när du gör dem.</string>
+    <string name="webpage_unreachable">Det gick inte att nå TV:n — sitter du kvar på samma wifi?</string>
+    <string name="webpage_privacy">Den här sidan serveras av din TV över ditt eget nätverk — det finns inget OpenTV-konto och ingen OpenTV-server. Inget du ändrar här lämnar ditt hem.</string>
+    <string name="webpage_field_type">Typ</string>
+    <string name="webpage_field_name_optional">Namn (valfritt)</string>
+    <string name="webpage_field_username">Användarnamn</string>
+    <string name="webpage_field_password">Lösenord</string>
+    <string name="webpage_test">Testa</string>
+    <string name="webpage_testing">Testar…</string>
+    <string name="webpage_test_failed">Testet misslyckades</string>
+    <string name="webpage_test_ok_default">Ser bra ut.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Lägg till en Xtream-, M3U- eller Stalker-portal härifrån — ett riktigt tangentbord slår TV-fjärrkontrollen. Din inloggning stannar på TV:n.</string>
+    <string name="webpage_prov_name_placeholder">Min leverantör</string>
+    <string name="webpage_prov_add">Lägg till och läs in kanaler</string>
+    <string name="webpage_enter_url">Ange URL:en.</string>
+    <string name="webpage_user_pass_required">Användarnamn och lösenord krävs.</string>
+    <string name="webpage_mac_required">En MAC-adress krävs.</string>
+    <string name="webpage_adding">Lägger till och läser in kanaler…</string>
+    <string name="webpage_added">Tillagd — %1$d kanaler inlästa.</string>
+    <string name="webpage_add_failed">Det gick inte att lägga till leverantören</string>
+    <string name="webpage_err_fill_required">Fyll i de obligatoriska fälten för den här leverantörstypen.</string>
+    <string name="webpage_err_save_source">Det gick inte att spara källan.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) för synk</string>
+    <string name="webpage_nas_hint">Nätverksenheten som dina enheter synkar favoriter och tittarhistorik via. Sparas direkt på din TV — lösenordet stannar på TV:n.</string>
+    <string name="webpage_nas_server">Server (IP-adress)</string>
+    <string name="webpage_nas_share">Resurs</string>
+    <string name="webpage_nas_folder">Mapp (valfritt)</string>
+    <string name="webpage_nas_folder_placeholder">(lämna tomt)</string>
+    <string name="webpage_nas_save">Spara NAS</string>
+    <string name="webpage_nas_test">Testa anslutning</string>
+    <string name="webpage_nas_password_unchanged">•••• (oförändrat)</string>
+    <string name="webpage_nas_required">Server och resurs krävs.</string>
+    <string name="webpage_nas_saving">Sparar och testar…</string>
+    <string name="webpage_nas_connected">Ansluten till NAS:en. ✓</string>
+    <string name="webpage_nas_failed">Det gick inte att nå NAS:en: %1$s</string>
+    <string name="webpage_nas_check_details">kontrollera uppgifterna</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Filtrera kategorier…</string>
+    <string name="webpage_no_categories_match">Inga kategorier matchar.</string>
+    <string name="webpage_no_channels_yet">Inga kanaler än — lägg till en leverantör ovan för att komma igång.</string>
+    <string name="webpage_channels_hint">Tryck på ett namn för att byta namn. Stjärna för favorit, öga för att dölja, pilar för att ändra ordning.</string>
+    <string name="webpage_channel_number">Nr %1$d</string>
+    <string name="webpage_hidden_tap_show">Dold — tryck för att visa</string>
+    <string name="webpage_showing_tap_hide">Visas — tryck för att dölja</string>
+    <string name="webpage_move_up">Flytta upp</string>
+    <string name="webpage_move_down">Flytta ned</string>
+    <string name="webpage_favourited">Tillagd som favorit</string>
+    <string name="webpage_unfavourited">Borttagen som favorit</string>
+    <string name="webpage_hidden_from_guide">Dold i guiden</string>
+    <string name="webpage_showing_in_guide">Visas i guiden</string>
+    <string name="webpage_renamed">Namnet ändrat</string>
+    <string name="webpage_rename_failed">Det gick inte att spara namnet.</string>
+    <string name="webpage_order_saved">Ordningen sparad</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Konfigurera OpenTV</string>
+    <string name="pairpage_sub">Det är enklare att fylla i det här än med fjärrkontrollen.</string>
+    <string name="pairpage_kind_xtream">Xtream-inloggning</string>
+    <string name="pairpage_kind_m3u">M3U-spellista</string>
+    <string name="pairpage_name_placeholder">Leverantör i vardagsrummet</string>
+    <string name="pairpage_url_hint">Klistra in hela raden från din leverantör om det är enklare — överflödiga delar trimmas bort.</string>
+    <string name="pairpage_field_code">Koden som visas på TV:n</string>
+    <string name="pairpage_code_hint">Det är så vi vet att det är du som sitter framför TV:n.</string>
+    <string name="pairpage_send">Skicka till TV:n</string>
+    <string name="pairpage_privacy">Den här sidan serveras av din TV över ditt eget nätverk. Det du skriver går direkt dit och ingen annanstans — det finns inget OpenTV-konto och ingen OpenTV-server.</string>
+    <string name="pairpage_err_code">Koden stämmer inte med den på TV:n. Återstående försök: %1$d.</string>
+    <string name="pairpage_err_url">Fyll i serveradressen.</string>
+    <string name="pairpage_too_many_title">För många försök</string>
+    <string name="pairpage_too_many_body">Starta parkopplingen igen på TV:n för att få en ny kod.</string>
+    <string name="pairpage_sent_title">Skickat till din TV</string>
+    <string name="pairpage_sent_body">Du kan lägga ifrån dig mobilen — resten sker på TV:n.</string>
 </resources>

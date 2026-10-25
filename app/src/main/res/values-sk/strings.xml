@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">Uložiť kľúč</string>
     <string name="settings_tmdb_saved">Kľúč TMDB uložený</string>
     <string name="settings_tmdb_active">Aktívny</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — správa kanálov</string>
+    <string name="webpage_hint">Zmeny sa na televízore prejavia okamžite.</string>
+    <string name="webpage_unreachable">Nepodarilo sa spojiť s televízorom — ste stále v tej istej wifi sieti?</string>
+    <string name="webpage_privacy">Túto stránku poskytuje váš televízor vo vašej vlastnej sieti — neexistuje žiadny účet OpenTV ani server OpenTV. Nič, čo tu zmeníte, neopustí vašu domácnosť.</string>
+    <string name="webpage_field_type">Typ</string>
+    <string name="webpage_field_name_optional">Názov (voliteľné)</string>
+    <string name="webpage_field_username">Používateľské meno</string>
+    <string name="webpage_field_password">Heslo</string>
+    <string name="webpage_test">Test</string>
+    <string name="webpage_testing">Testuje sa…</string>
+    <string name="webpage_test_failed">Test zlyhal</string>
+    <string name="webpage_test_ok_default">Vyzerá to dobre.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">Pridajte tu poskytovateľa Xtream, M3U alebo portál Stalker — skutočná klávesnica je pohodlnejšia ako diaľkový ovládač. Vaše prihlasovacie údaje zostanú v televízore.</string>
+    <string name="webpage_prov_name_placeholder">Môj poskytovateľ</string>
+    <string name="webpage_prov_add">Pridať a načítať kanály</string>
+    <string name="webpage_enter_url">Zadajte URL adresu.</string>
+    <string name="webpage_user_pass_required">Používateľské meno a heslo sú povinné.</string>
+    <string name="webpage_mac_required">MAC adresa je povinná.</string>
+    <string name="webpage_adding">Pridávanie a načítavanie kanálov…</string>
+    <string name="webpage_added">Pridané — načítané kanály: %1$d.</string>
+    <string name="webpage_add_failed">Poskytovateľa sa nepodarilo pridať</string>
+    <string name="webpage_err_fill_required">Vyplňte povinné polia pre tento typ poskytovateľa.</string>
+    <string name="webpage_err_save_source">Zdroj sa nepodarilo uložiť.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) na synchronizáciu</string>
+    <string name="webpage_nas_hint">Sieťové úložisko, cez ktoré vaše zariadenia synchronizujú obľúbené položky a históriu pozerania. Ukladá sa priamo do televízora — heslo zostáva v televízore.</string>
+    <string name="webpage_nas_server">Server (IP adresa)</string>
+    <string name="webpage_nas_share">Zdieľanie</string>
+    <string name="webpage_nas_folder">Priečinok (voliteľné)</string>
+    <string name="webpage_nas_folder_placeholder">(nechajte prázdne)</string>
+    <string name="webpage_nas_save">Uložiť NAS</string>
+    <string name="webpage_nas_test">Otestovať pripojenie</string>
+    <string name="webpage_nas_password_unchanged">•••• (bez zmeny)</string>
+    <string name="webpage_nas_required">Server a zdieľanie sú povinné.</string>
+    <string name="webpage_nas_saving">Ukladanie a testovanie…</string>
+    <string name="webpage_nas_connected">Pripojené k NAS. ✓</string>
+    <string name="webpage_nas_failed">Nepodarilo sa pripojiť k NAS: %1$s</string>
+    <string name="webpage_nas_check_details">skontrolujte údaje</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">Filtrovať kategórie…</string>
+    <string name="webpage_no_categories_match">Žiadne kategórie nezodpovedajú.</string>
+    <string name="webpage_no_channels_yet">Zatiaľ žiadne kanály — začnite pridaním poskytovateľa vyššie.</string>
+    <string name="webpage_channels_hint">Ťuknutím na názov kanál premenujete. Hviezdička = obľúbené, oko = skryť, šípky = zmeniť poradie.</string>
+    <string name="webpage_channel_number">č. %1$d</string>
+    <string name="webpage_hidden_tap_show">Skryté — ťuknutím zobrazíte</string>
+    <string name="webpage_showing_tap_hide">Zobrazené — ťuknutím skryjete</string>
+    <string name="webpage_move_up">Posunúť nahor</string>
+    <string name="webpage_move_down">Posunúť nadol</string>
+    <string name="webpage_favourited">Pridané medzi obľúbené</string>
+    <string name="webpage_unfavourited">Odstránené z obľúbených</string>
+    <string name="webpage_hidden_from_guide">Skryté v programe</string>
+    <string name="webpage_showing_in_guide">Zobrazené v programe</string>
+    <string name="webpage_renamed">Premenované</string>
+    <string name="webpage_rename_failed">Názov sa nepodarilo uložiť.</string>
+    <string name="webpage_order_saved">Poradie uložené</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">Nastavenie OpenTV</string>
+    <string name="pairpage_sub">Vyplniť to tu je pohodlnejšie než diaľkovým ovládačom.</string>
+    <string name="pairpage_kind_xtream">Prihlásenie Xtream</string>
+    <string name="pairpage_kind_m3u">Playlist M3U</string>
+    <string name="pairpage_name_placeholder">Poskytovateľ v obývačke</string>
+    <string name="pairpage_url_hint">Ak je to jednoduchšie, vložte celý riadok od poskytovateľa — nadbytočné časti sa orežú.</string>
+    <string name="pairpage_field_code">Kód zobrazený na televízore</string>
+    <string name="pairpage_code_hint">Vďaka tomu vieme, že pred televízorom skutočne stojíte vy.</string>
+    <string name="pairpage_send">Odoslať do televízora</string>
+    <string name="pairpage_privacy">Túto stránku poskytuje váš televízor vo vašej vlastnej sieti. Čokoľvek zadáte, ide priamo do neho a nikam inam — neexistuje žiadny účet OpenTV ani server OpenTV.</string>
+    <string name="pairpage_err_code">Kód sa nezhoduje s kódom na televízore. Zostávajúce pokusy: %1$d.</string>
+    <string name="pairpage_err_url">Vyplňte, prosím, adresu servera.</string>
+    <string name="pairpage_too_many_title">Príliš veľa pokusov</string>
+    <string name="pairpage_too_many_body">Spustite párovanie v televízore znova a získate nový kód.</string>
+    <string name="pairpage_sent_title">Odoslané do televízora</string>
+    <string name="pairpage_sent_body">Telefón môžete odložiť — zvyšok sa deje v televízore.</string>
 </resources>

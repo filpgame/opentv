@@ -320,4 +320,82 @@
     <string name="settings_tmdb_save">ذخیره کلید</string>
     <string name="settings_tmdb_saved">کلید TMDB ذخیره شد</string>
     <string name="settings_tmdb_active">فعال</string>
+
+    <!-- ============================ Web channel manager page (served to a phone/laptop browser) ============================ -->
+    <!-- Rendered by ManagerPage in the browser's language. Placeholders stay positional (%1$d / %1$s). -->
+    <string name="webpage_title">OpenTV — مدیریت کانال‌ها</string>
+    <string name="webpage_hint">تغییرات همان لحظه روی تلویزیون شما اعمال می‌شود.</string>
+    <string name="webpage_unreachable">دسترسی به تلویزیون ممکن نشد — هنوز روی همان Wi-Fi هستید؟</string>
+    <string name="webpage_privacy">این صفحه را تلویزیون شما روی شبکه خودتان ارائه می‌کند — نه حساب OpenTV وجود دارد و نه سرور OpenTV. هیچ‌چیزی که اینجا تغییر می‌دهید از خانه شما خارج نمی‌شود.</string>
+    <string name="webpage_field_type">نوع</string>
+    <string name="webpage_field_name_optional">نام (اختیاری)</string>
+    <string name="webpage_field_username">نام کاربری</string>
+    <string name="webpage_field_password">گذرواژه</string>
+    <string name="webpage_test">آزمایش</string>
+    <string name="webpage_testing">در حال آزمایش…</string>
+    <string name="webpage_test_failed">آزمایش ناموفق بود</string>
+    <string name="webpage_test_ok_default">همه‌چیز مرتب است.</string>
+    <!-- Add a provider -->
+    <string name="webpage_prov_hint">از اینجا یک ارائه‌دهنده Xtream یا M3U یا یک پورتال Stalker اضافه کنید — صفحه‌کلید واقعی از کنترل تلویزیون راحت‌تر است. اطلاعات ورود شما روی تلویزیون می‌ماند.</string>
+    <string name="webpage_prov_name_placeholder">ارائه‌دهنده من</string>
+    <string name="webpage_prov_add">افزودن و بارگذاری کانال‌ها</string>
+    <string name="webpage_enter_url">نشانی URL را وارد کنید.</string>
+    <string name="webpage_user_pass_required">نام کاربری و گذرواژه الزامی است.</string>
+    <string name="webpage_mac_required">نشانی MAC الزامی است.</string>
+    <string name="webpage_adding">در حال افزودن و بارگذاری کانال‌ها…</string>
+    <string name="webpage_added">اضافه شد — %1$d کانال بارگذاری شد.</string>
+    <string name="webpage_add_failed">افزودن ارائه‌دهنده ممکن نشد</string>
+    <string name="webpage_err_fill_required">فیلدهای لازم برای این نوع ارائه‌دهنده را پر کنید.</string>
+    <string name="webpage_err_save_source">ذخیره منبع ممکن نشد.</string>
+    <!-- NAS connection card -->
+    <string name="webpage_nas_title">NAS (SMB) برای همگام‌سازی</string>
+    <string name="webpage_nas_hint">درایو شبکه‌ای که دستگاه‌هایتان علاقه‌مندی‌ها و تاریخچه تماشا را از طریق آن همگام می‌کنند. مستقیماً روی تلویزیون شما ذخیره می‌شود — گذرواژه روی تلویزیون می‌ماند.</string>
+    <string name="webpage_nas_server">سرور (نشانی IP)</string>
+    <string name="webpage_nas_share">اشتراک</string>
+    <string name="webpage_nas_folder">پوشه (اختیاری)</string>
+    <string name="webpage_nas_folder_placeholder">(خالی بگذارید)</string>
+    <string name="webpage_nas_save">ذخیره NAS</string>
+    <string name="webpage_nas_test">آزمایش اتصال</string>
+    <string name="webpage_nas_password_unchanged">•••• (بدون تغییر)</string>
+    <string name="webpage_nas_required">سرور و اشتراک الزامی است.</string>
+    <string name="webpage_nas_saving">در حال ذخیره و آزمایش…</string>
+    <string name="webpage_nas_connected">به NAS متصل شد. ✓</string>
+    <string name="webpage_nas_failed">دسترسی به NAS ممکن نشد: %1$s</string>
+    <string name="webpage_nas_check_details">جزئیات را بررسی کنید</string>
+    <!-- Categories and channels -->
+    <string name="webpage_filter_placeholder">فیلتر دسته‌ها…</string>
+    <string name="webpage_no_categories_match">هیچ دسته‌ای مطابقت ندارد.</string>
+    <string name="webpage_no_channels_yet">هنوز کانالی نیست — برای شروع، بالا یک ارائه‌دهنده اضافه کنید.</string>
+    <string name="webpage_channels_hint">برای تغییر نام، روی نام بزنید. ستاره برای علاقه‌مندی، چشم برای پنهان کردن، پیکان‌ها برای مرتب‌سازی.</string>
+    <string name="webpage_channel_number">شماره %1$d</string>
+    <string name="webpage_hidden_tap_show">پنهان — برای نمایش بزنید</string>
+    <string name="webpage_showing_tap_hide">نمایان — برای پنهان کردن بزنید</string>
+    <string name="webpage_move_up">انتقال به بالا</string>
+    <string name="webpage_move_down">انتقال به پایین</string>
+    <string name="webpage_favourited">به علاقه‌مندی‌ها اضافه شد</string>
+    <string name="webpage_unfavourited">از علاقه‌مندی‌ها حذف شد</string>
+    <string name="webpage_hidden_from_guide">از راهنما پنهان شد</string>
+    <string name="webpage_showing_in_guide">در راهنما نمایش داده می‌شود</string>
+    <string name="webpage_renamed">نام تغییر کرد</string>
+    <string name="webpage_rename_failed">ذخیره نام ممکن نشد.</string>
+    <string name="webpage_order_saved">ترتیب ذخیره شد</string>
+
+    <!-- ============================ Phone setup page (served to the phone that scanned the QR) ============================ -->
+    <!-- Rendered by PairingPage in the browser's language; also reuses onboarding_* and webpage_field_* strings. -->
+    <string name="pairpage_title">راه‌اندازی OpenTV</string>
+    <string name="pairpage_sub">وارد کردن اطلاعات اینجا از کار با کنترل تلویزیون راحت‌تر است.</string>
+    <string name="pairpage_kind_xtream">ورود Xtream</string>
+    <string name="pairpage_kind_m3u">پلی‌لیست M3U</string>
+    <string name="pairpage_name_placeholder">ارائه‌دهنده اتاق نشیمن</string>
+    <string name="pairpage_url_hint">اگر ساده‌تر است، کل خط ارسالی ارائه‌دهنده خود را بچسبانید — بخش‌های اضافه حذف می‌شود.</string>
+    <string name="pairpage_field_code">کدی که روی تلویزیون نمایش داده می‌شود</string>
+    <string name="pairpage_code_hint">این کد ثابت می‌کند که شما جلوی تلویزیون ایستاده‌اید.</string>
+    <string name="pairpage_send">ارسال به تلویزیون</string>
+    <string name="pairpage_privacy">این صفحه را تلویزیون شما روی شبکه خودتان ارائه می‌کند. آنچه تایپ می‌کنید مستقیم به همان می‌رسد و جای دیگری نمی‌رود — نه حساب OpenTV وجود دارد و نه سرور OpenTV.</string>
+    <string name="pairpage_err_code">این کد با کد روی تلویزیون مطابقت ندارد. تلاش‌های باقی‌مانده: %1$d.</string>
+    <string name="pairpage_err_url">لطفاً نشانی سرور را وارد کنید.</string>
+    <string name="pairpage_too_many_title">تلاش‌های بیش از حد</string>
+    <string name="pairpage_too_many_body">برای دریافت کد جدید، جفت‌سازی را دوباره روی تلویزیون شروع کنید.</string>
+    <string name="pairpage_sent_title">به تلویزیون شما ارسال شد</string>
+    <string name="pairpage_sent_body">می‌توانید گوشی را کنار بگذارید — بقیه کار روی تلویزیون انجام می‌شود.</string>
 </resources>
