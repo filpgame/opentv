@@ -24,12 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -84,8 +82,6 @@ fun GuidePreview(
     onRefresh: () -> Unit,
     onAddSource: () -> Unit,
     previewPlayer: ExoPlayer?,
-    isRecording: Boolean = false,
-    onRecord: () -> Unit = {},
     dayLabel: String = "",
     canGoPrevDay: Boolean = false,
     onPrevDay: () -> Unit = {},
@@ -188,18 +184,6 @@ fun GuidePreview(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                if (row != null) {
-                    IconButton(onClick = onRecord) {
-                        // Red throughout — the record convention — but the glyph switches to a
-                        // stop square while a recording is running, so a press visibly does
-                        // something (● start → ■ stop) rather than looking inert.
-                        Icon(
-                            if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                            contentDescription = if (isRecording) stringResource(R.string.guide_cd_stop_recording) else stringResource(R.string.guide_cd_record_now),
-                            tint = Color(0xFFE53935),
-                        )
-                    }
-                }
                 IconButton(onClick = onRefresh) {
                     Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.guide_cd_refresh))
                 }

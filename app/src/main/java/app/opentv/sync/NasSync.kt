@@ -6,9 +6,6 @@
 package app.opentv.sync
 
 import app.opentv.core.ServiceLocator
-import app.opentv.recording.RecordingStorage
-import app.opentv.recording.SmbClient
-import app.opentv.recording.SmbConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -16,10 +13,9 @@ import kotlinx.coroutines.withContext
  * Free, server-less "cloud" sync through the user's own NAS.
  *
  * There is no server of ours and no account: every device drops its own [SyncBundle] as a small
- * JSON file into one shared folder on the SMB share the user already set up for recordings, and
- * reads back every other device's file. The folder is a plain rendezvous — the merge logic lives
- * in [SyncEngine], exactly the one used by LAN sync, so favourites, watch history and NAS
- * recordings converge the same way whether they arrive over wifi or via the NAS.
+ * JSON file into one shared folder on the SMB share the user set up under Sync, and reads back
+ * every other device's file. The folder is a plain rendezvous — the merge logic lives in
+ * [SyncEngine], so favourites and watch history converge the same way whichever device wrote them.
  *
  * Each device writes `<share>/<folder>/OpenTV/sync/<deviceId>.json`. Reading is additive and
  * newest-wins (see [SyncEngine]); nothing on the NAS is ever deleted, so a device that has been
@@ -33,7 +29,7 @@ class NasSync(private val graph: ServiceLocator.Graph) {
         /** [merged] items pulled in from [peers] other devices' files (this device's own excluded). */
         data class Success(val merged: Int, val peers: Int) : Result
 
-        /** No SMB/NAS is configured yet — the user needs to set one up under Recording settings. */
+        /** No SMB/NAS is configured yet — the user needs to fill in the NAS connection first. */
         data object NotConfigured : Result
 
         /** Anything went wrong reaching or reading the NAS. [message] is best-effort, may be null. */
@@ -46,7 +42,7 @@ class NasSync(private val graph: ServiceLocator.Graph) {
      * throwing, and a single unreadable peer file is skipped rather than failing the whole run.
      */
     suspend fun sync(): Result = withContext(Dispatchers.IO) {
-        val config = RecordingStorage.smbConfig(graph.settings)
+        val config = SmbConfig.from(graph.settings)
         if (!config.isConfigured) return@withContext Result.NotConfigured
 
         runCatching {

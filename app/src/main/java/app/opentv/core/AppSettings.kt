@@ -148,37 +148,6 @@ class AppSettings private constructor(context: Context) {
         _resumeLastChannel.value = enabled
     }
 
-    // ---- Recording behaviour -----------------------------------------------------------------
-
-    /** Minutes to start a scheduled recording early, so a late start isn't clipped. */
-    private val _recordPadStartMinutes = MutableStateFlow(prefs.getInt(KEY_PAD_START, 1))
-    val recordPadStartMinutes: StateFlow<Int> = _recordPadStartMinutes.asStateFlow()
-
-    /** Minutes to keep recording past the listed end, so an overrun (sport/news) isn't cut off. */
-    private val _recordPadEndMinutes = MutableStateFlow(prefs.getInt(KEY_PAD_END, 5))
-    val recordPadEndMinutes: StateFlow<Int> = _recordPadEndMinutes.asStateFlow()
-
-    fun setRecordPadding(startMinutes: Int, endMinutes: Int) {
-        val s = startMinutes.coerceIn(0, 30)
-        val e = endMinutes.coerceIn(0, 60)
-        prefs.edit().putInt(KEY_PAD_START, s).putInt(KEY_PAD_END, e).apply()
-        _recordPadStartMinutes.value = s
-        _recordPadEndMinutes.value = e
-    }
-
-    /**
-     * When a scheduled recording starts, switch the box to it (playing from the growing file, so no
-     * extra provider connection). Essential on a single-connection provider, where recording one
-     * channel while another plays gets one of them cut. Default on.
-     */
-    private val _recordAutoSwitch = MutableStateFlow(prefs.getBoolean(KEY_REC_AUTOSWITCH, true))
-    val recordAutoSwitch: StateFlow<Boolean> = _recordAutoSwitch.asStateFlow()
-
-    fun setRecordAutoSwitch(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_REC_AUTOSWITCH, enabled).apply()
-        _recordAutoSwitch.value = enabled
-    }
-
     /**
      * Pause & rewind live TV via a rolling on-disk buffer of the current channel. Experimental and
      * heavier on weak boxes, so it's opt-in (off by default); when off, playback is unchanged.
@@ -269,39 +238,7 @@ class AppSettings private constructor(context: Context) {
         runCatching { ChannelLayout.valueOf(prefs.getString(KEY_CHANNEL_LAYOUT, null) ?: "") }
             .getOrDefault(ChannelLayout.GRID)
 
-    // ---- Recording ---------------------------------------------------------------------------
-
-    /**
-     * Where recordings are written: this box's internal storage, a NAS over SMB, or a plugged-in
-     * USB / external drive addressed through the Storage Access Framework (a granted tree URI —
-     * the only way to write removable storage on modern Android without a raw filesystem path).
-     */
-    enum class RecordingTarget { INTERNAL, SMB, USB }
-
-    private val _recordingTarget = MutableStateFlow(readRecordingTarget())
-    val recordingTarget: StateFlow<RecordingTarget> = _recordingTarget.asStateFlow()
-
-    /**
-     * The SAF tree URI the user granted for USB recordings (a `content://` document-tree URI), or
-     * null if none has been picked. Persisted as a string; a matching persistable permission is
-     * taken when it is chosen, so the grant survives restarts.
-     */
-    private val _usbTreeUri = MutableStateFlow(prefs.getString(KEY_USB_TREE, null))
-    val usbTreeUri: StateFlow<String?> = _usbTreeUri.asStateFlow()
-
-    /** A friendly name for the chosen USB folder (e.g. the DocumentFile's name), for display. */
-    private val _usbFolderLabel = MutableStateFlow(prefs.getString(KEY_USB_LABEL, null))
-    val usbFolderLabel: StateFlow<String?> = _usbFolderLabel.asStateFlow()
-
-    /** Save (or clear, with null) the granted USB tree URI and its display label together. */
-    fun setUsbTree(treeUri: String?, label: String?) {
-        prefs.edit()
-            .putString(KEY_USB_TREE, treeUri)
-            .putString(KEY_USB_LABEL, label)
-            .apply()
-        _usbTreeUri.value = treeUri
-        _usbFolderLabel.value = label
-    }
+    // ---- NAS (SMB) connection ----------------------------------------------------------------
 
     /** SMB / NAS connection. Stored on-device only, exactly like provider credentials. */
     private val _smbHost = MutableStateFlow(prefs.getString(KEY_SMB_HOST, "").orEmpty())
@@ -310,7 +247,7 @@ class AppSettings private constructor(context: Context) {
     private val _smbShare = MutableStateFlow(prefs.getString(KEY_SMB_SHARE, "").orEmpty())
     val smbShare: StateFlow<String> = _smbShare.asStateFlow()
 
-    /** Sub-folder within the share, e.g. `Recordings`. Blank = share root. */
+    /** Sub-folder within the share, e.g. `OpenTV`. Blank = share root. */
     private val _smbFolder = MutableStateFlow(prefs.getString(KEY_SMB_FOLDER, "OpenTV").orEmpty())
     val smbFolder: StateFlow<String> = _smbFolder.asStateFlow()
 
@@ -319,11 +256,6 @@ class AppSettings private constructor(context: Context) {
 
     private val _smbPassword = MutableStateFlow(prefs.getString(KEY_SMB_PASS, "").orEmpty())
     val smbPassword: StateFlow<String> = _smbPassword.asStateFlow()
-
-    fun setRecordingTarget(target: RecordingTarget) {
-        prefs.edit().putString(KEY_REC_TARGET, target.name).apply()
-        _recordingTarget.value = target
-    }
 
     fun setSmbConfig(host: String, share: String, folder: String, user: String, password: String) {
         prefs.edit()
@@ -339,10 +271,6 @@ class AppSettings private constructor(context: Context) {
         _smbUser.value = user
         _smbPassword.value = password
     }
-
-    private fun readRecordingTarget(): RecordingTarget =
-        runCatching { RecordingTarget.valueOf(prefs.getString(KEY_REC_TARGET, null) ?: "") }
-            .getOrDefault(RecordingTarget.INTERNAL)
 
     // ---- NAS ("cloud") sync ------------------------------------------------------------------
 
@@ -444,22 +372,16 @@ class AppSettings private constructor(context: Context) {
         fun savedLanguageTag(context: Context): String =
             context.getSharedPreferences("opentv_settings", Context.MODE_PRIVATE)
                 .getString(KEY_LANGUAGE, "").orEmpty()
-        private const val KEY_REC_TARGET = "recording_target"
         private const val KEY_SMB_HOST = "smb_host"
         private const val KEY_SMB_SHARE = "smb_share"
         private const val KEY_SMB_FOLDER = "smb_folder"
         private const val KEY_SMB_USER = "smb_user"
         private const val KEY_SMB_PASS = "smb_password"
-        private const val KEY_USB_TREE = "usb_tree_uri"
-        private const val KEY_USB_LABEL = "usb_folder_label"
         private const val KEY_SYNC_DEVICE_ID = "sync_device_id"
         private const val KEY_NAS_AUTO_SYNC = "nas_auto_sync"
         private const val KEY_VOD_SYNCED_AT = "vod_synced_at"
         private const val KEY_TMDB_KEY = "tmdb_api_key"
         private const val KEY_STREMIO_ADDONS = "stremio_addons"
-        private const val KEY_PAD_START = "rec_pad_start_min"
-        private const val KEY_PAD_END = "rec_pad_end_min"
-        private const val KEY_REC_AUTOSWITCH = "rec_auto_switch"
         private const val KEY_LIVE_PAUSE = "live_pause_enabled"
 
         @Volatile private var instance: AppSettings? = null

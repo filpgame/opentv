@@ -214,7 +214,7 @@ fun AddSourceScreen(
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text(stringResource(R.string.recset_field_username)) },
+                    label = { Text(stringResource(R.string.common_username)) },
                     trailingIcon = { PasteButton { username += it } },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -223,7 +223,7 @@ fun AddSourceScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text(stringResource(R.string.recset_field_password)) },
+                    label = { Text(stringResource(R.string.common_password)) },
                     trailingIcon = { PasteButton { password += it } },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -307,7 +307,7 @@ fun AddSourceScreen(
                     if (ui.testing) {
                         CircularProgressIndicator(Modifier.height(18.dp), strokeWidth = 2.dp)
                     } else {
-                        Text(stringResource(R.string.recset_test_connection))
+                        Text(stringResource(R.string.common_test_connection))
                     }
                 }
                 Button(

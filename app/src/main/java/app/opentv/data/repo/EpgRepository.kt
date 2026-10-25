@@ -83,9 +83,6 @@ class EpgRepository(
     fun observeNow(nowUtcMillis: Long): Flow<List<Programme>> =
         programmeDao.observeNow(nowUtcMillis)
 
-    suspend fun upcoming(epgChannelId: String, nowUtcMillis: Long, limit: Int = 12): List<Programme> =
-        programmeDao.upcoming(epgChannelId, nowUtcMillis, limit)
-
     // ---- Feed management -------------------------------------------------------------------
 
     suspend fun addCustomFeed(name: String, url: String) {

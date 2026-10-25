@@ -68,6 +68,7 @@ fun AppSettingsScreen(onBack: () -> Unit) {
     val liveEnabled by settings.liveEnabled.collectAsState()
     val moviesEnabled by settings.moviesEnabled.collectAsState()
     val seriesEnabled by settings.seriesEnabled.collectAsState()
+    val livePause by settings.livePauseEnabled.collectAsState()
 
     // A refresh next to each content toggle kicks a full catalogue re-sync (which now honours the
     // toggles, so a type just switched on is fetched). Runs as background work so it isn't cut short
@@ -204,6 +205,12 @@ fun AppSettingsScreen(onBack: () -> Unit) {
                 subtitle = stringResource(R.string.settings_resume_subtitle),
                 checked = resumeLast,
                 onToggle = settings::setResumeLastChannel,
+            )
+            ToggleRow(
+                title = stringResource(R.string.settings_live_pause),
+                subtitle = stringResource(R.string.settings_live_pause_desc),
+                checked = livePause,
+                onToggle = settings::setLivePauseEnabled,
             )
         }
 

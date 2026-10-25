@@ -13,8 +13,8 @@ import app.opentv.data.model.SourceKind
 import app.opentv.data.model.shownName
 import app.opentv.data.repo.CatalogRepository
 import app.opentv.data.repo.SourceRepository
-import app.opentv.recording.SmbClient
-import app.opentv.recording.SmbConfig
+import app.opentv.sync.SmbClient
+import app.opentv.sync.SmbConfig
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -225,12 +225,12 @@ class ManagerServer(
 
             method == "POST" && path == "/reorder" -> handleReorder(output, body)
 
-            method == "GET" && path == "/recording" ->
-                output.write(PairingHttp.httpResponse("200 OK", "application/json", recordingJson()))
+            method == "GET" && path == "/nas" ->
+                output.write(PairingHttp.httpResponse("200 OK", "application/json", nasJson()))
 
-            method == "POST" && path == "/recording" -> handleRecording(output, body)
+            method == "POST" && path == "/nas" -> handleNas(output, body)
 
-            method == "POST" && path == "/recording/test" -> handleRecordingTest(output, body)
+            method == "POST" && path == "/nas/test" -> handleNasTest(output, body)
 
             method == "POST" && path == "/source" -> handleAddSource(output, body)
 
@@ -319,12 +319,11 @@ class ManagerServer(
         )
     }
 
-    /** `GET /recording` → the current recording target and NAS settings. The password is never sent
-     *  back to the browser — only whether one is set. */
-    private fun recordingJson(): String = json.encodeToString(
-        RecordingDto.serializer(),
-        RecordingDto(
-            target = settings.recordingTarget.value.name,
+    /** `GET /nas` → the current NAS-sync connection settings. The password is never sent back to the
+     *  browser — only whether one is set. */
+    private fun nasJson(): String = json.encodeToString(
+        NasDto.serializer(),
+        NasDto(
             host = settings.smbHost.value,
             share = settings.smbShare.value,
             folder = settings.smbFolder.value,
@@ -333,28 +332,27 @@ class ManagerServer(
         ),
     )
 
-    /** `POST /recording {host,share,folder,user,password?}` → save the NAS details and switch
-     *  recordings to it. A blank/absent password keeps the one already stored, so the fields can be
-     *  filled without re-typing an existing password. */
-    private fun handleRecording(output: OutputStream, body: String) {
-        val req = runCatching { json.decodeFromString(RecordingReq.serializer(), body) }.getOrNull()
+    /** `POST /nas {host,share,folder,user,password?}` → save the NAS details. A blank/absent password
+     *  keeps the one already stored, so the fields can be filled without re-typing an existing
+     *  password. */
+    private fun handleNas(output: OutputStream, body: String) {
+        val req = runCatching { json.decodeFromString(NasReq.serializer(), body) }.getOrNull()
         if (req == null) {
             output.write(PairingHttp.httpResponse("400 Bad Request", "text/plain", "Bad request."))
             return
         }
         val password = req.password?.takeIf { it.isNotEmpty() } ?: settings.smbPassword.value
         settings.setSmbConfig(req.host.trim(), req.share.trim(), req.folder.trim(), req.user.trim(), password)
-        settings.setRecordingTarget(AppSettings.RecordingTarget.SMB)
         writeOk(output)
     }
 
-    /** `POST /recording/test {host,share,folder,user,password?}` → actually open the SMB share and
+    /** `POST /nas/test {host,share,folder,user,password?}` → actually open the SMB share and
      *  report whether it worked. Blank fields fall back to what's stored, so the browser can test
      *  the saved settings without re-sending the password. Runs on this handler thread (already off
      *  the main thread), which is where a blocking network probe belongs. */
-    private fun handleRecordingTest(output: OutputStream, body: String) {
-        val req = runCatching { json.decodeFromString(RecordingReq.serializer(), body) }.getOrNull()
-            ?: RecordingReq()
+    private fun handleNasTest(output: OutputStream, body: String) {
+        val req = runCatching { json.decodeFromString(NasReq.serializer(), body) }.getOrNull()
+            ?: NasReq()
         val cfg = SmbConfig(
             host = req.host.trim().ifBlank { settings.smbHost.value },
             share = req.share.trim().ifBlank { settings.smbShare.value },
@@ -522,8 +520,7 @@ class ManagerServer(
 
 @Serializable private data class ReorderReq(val ids: List<Long>)
 
-@Serializable private data class RecordingDto(
-    val target: String,
+@Serializable private data class NasDto(
     val host: String,
     val share: String,
     val folder: String,
@@ -531,7 +528,7 @@ class ManagerServer(
     val hasPassword: Boolean,
 )
 
-@Serializable private data class RecordingReq(
+@Serializable private data class NasReq(
     val host: String = "",
     val share: String = "",
     val folder: String = "",

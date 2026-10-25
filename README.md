@@ -36,13 +36,11 @@ keep it alive. That is the entire point.
 - **Live TV** from Xtream Codes logins and plain M3U/M3U8 playlists
 - **A guide that stays put** — XMLTV EPG that survives restarts, refreshes incrementally, and
   never wipes itself
-- **Recording (DVR)** — record to the box, a USB drive or your NAS (SMB); schedule from the
-  guide; series-link a whole show; play back in-app with full seeking
-- **Catch-up / archive** where your provider offers it, plus **programme reminders**
+- **Catch-up / archive** where your provider offers it
 - **Movies and series** with resume and per-profile watch history
 - **Favourites, categories, hide channels, search**, picture-in-picture, aspect control, and
   hand-off to an external player
-- **Free sync between your own devices** — favourites, watch history and NAS recordings, over
+- **Free sync between your own devices** — favourites and watch history, over
   your wifi or Tailscale, with no server of ours
 - **Multiple languages** (fully translated to Spanish), a parental PIN, profiles, and self-updates
 - **D-pad first** — designed for a remote, works with a touchscreen
@@ -54,11 +52,9 @@ The live TV guide — programme grid, favourites, and a live preview:
 
 ![OpenTV live TV guide](docs/screenshots/01-guide.png)
 
-| Recordings &amp; reminders | Free cloud sync — your own NAS, no server |
-| :---: | :---: |
-| ![Recordings and reminders](docs/screenshots/02-recordings.png) | ![NAS cloud sync](docs/screenshots/03-cloud-sync.png) |
-| Movies &amp; series | Settings |
-| ![Movies](docs/screenshots/04-movies.png) | ![Settings](docs/screenshots/05-settings.png) |
+| Free cloud sync — your own NAS, no server | Movies &amp; series | Settings |
+| :---: | :---: | :---: |
+| ![NAS cloud sync](docs/screenshots/03-cloud-sync.png) | ![Movies](docs/screenshots/04-movies.png) | ![Settings](docs/screenshots/05-settings.png) |
 
 Open-source through and through — the About screen carries the licence, the links, and a donation QR:
 
