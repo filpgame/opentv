@@ -85,10 +85,12 @@ import app.opentv.update.UpdateGate
 
 class MainActivity : ComponentActivity() {
 
-    // Apply the chosen UI language before any view or resource is resolved. A language change in
-    // settings calls recreate(), which re-runs this with the new tag.
+    // Apply the chosen UI language, and the car-unit density fix, before any view or resource is
+    // resolved. A language change in settings calls recreate(), which re-runs this with the new tag.
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(app.opentv.core.LocaleUtils.wrap(newBase))
+        super.attachBaseContext(
+            app.opentv.core.DensityUtils.wrap(app.opentv.core.LocaleUtils.wrap(newBase)),
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
