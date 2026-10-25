@@ -346,6 +346,16 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE sourceId = :sourceId")
     suspend fun deleteForSource(sourceId: Long)
+
+    @Query("DELETE FROM categories WHERE sourceId = :sourceId AND kind = :kind")
+    suspend fun deleteForSourceAndKind(sourceId: Long, kind: StreamKind)
+
+    /** Makes a source's categories of one kind exactly [categories], dropping ones it no longer has. */
+    @Transaction
+    suspend fun replaceForSource(sourceId: Long, kind: StreamKind, categories: List<Category>) {
+        deleteForSourceAndKind(sourceId, kind)
+        if (categories.isNotEmpty()) upsertAll(categories)
+    }
 }
 
 /** Projection for [CategoryDao.namesFor]. */
@@ -369,6 +379,26 @@ data class ChannelName(val id: Long, val name: String)
 
 /** Projection for [ChannelDao.channelCountsByCategory]. */
 data class CategoryChannelCount(val sourceId: Long, val categoryId: String, val count: Int)
+
+/** A stored movie, series or episode's row id and user state, by its provider key. */
+data class VodRowKey(val id: Long, val key: String, val favourite: Boolean)
+
+/**
+ * The shared half of the `replaceForSource` methods on the VOD DAOs: carries each existing row's id
+ * over to its incoming copy, so resume positions (keyed by row id) and favourites survive a
+ * refresh. Returns the rows to write and the ids of rows the source no longer lists.
+ */
+private fun <T> mergeByKey(
+    existing: List<VodRowKey>,
+    incoming: List<T>,
+    keyOf: (T) -> String,
+    carry: (T, VodRowKey) -> T,
+): Pair<List<T>, List<Long>> {
+    val byKey = existing.associateBy { it.key }
+    val merged = incoming.map { row -> byKey[keyOf(row)]?.let { carry(row, it) } ?: row }
+    val kept = incoming.mapTo(HashSet(incoming.size * 2)) { keyOf(it) }
+    return merged to existing.filter { it.key !in kept }.map { it.id }
+}
 
 @Dao
 interface EpgFeedDao {
@@ -572,6 +602,27 @@ interface MovieDao {
 
     @Query("DELETE FROM movies WHERE sourceId = :sourceId")
     suspend fun deleteForSource(sourceId: Long)
+
+    @Query("SELECT id, streamId AS `key`, favourite FROM movies WHERE sourceId = :sourceId")
+    suspend fun keysForSource(sourceId: Long): List<VodRowKey>
+
+    /** Plain REPLACE, not [Upsert]: every row arrives with its id already set, and an upsert pays
+     *  for a caught constraint exception per row that already exists. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrReplace(movies: List<Movie>)
+
+    @Query("DELETE FROM movies WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    /** Makes a playlist source's movies exactly [incoming]. See [mergeByKey]. */
+    @Transaction
+    suspend fun replaceForSource(sourceId: Long, incoming: List<Movie>) {
+        val (rows, stale) = mergeByKey(keysForSource(sourceId), incoming, Movie::streamId) { movie, old ->
+            movie.copy(id = old.id, favourite = old.favourite)
+        }
+        rows.chunked(UPSERT_CHUNK).forEach { insertOrReplace(it) }
+        stale.chunked(UPSERT_CHUNK).forEach { deleteByIds(it) }
+    }
 }
 
 @Dao
@@ -642,6 +693,26 @@ interface SeriesDao {
 
     @Query("DELETE FROM series WHERE sourceId = :sourceId")
     suspend fun deleteForSource(sourceId: Long)
+
+    @Query("SELECT id, seriesId AS `key`, favourite FROM series WHERE sourceId = :sourceId")
+    suspend fun keysForSource(sourceId: Long): List<VodRowKey>
+
+    /** See [MovieDao.insertOrReplace]. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrReplace(items: List<Series>)
+
+    @Query("DELETE FROM series WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    /** Makes a playlist source's series exactly [incoming]. See [mergeByKey]. */
+    @Transaction
+    suspend fun replaceForSource(sourceId: Long, incoming: List<Series>) {
+        val (rows, stale) = mergeByKey(keysForSource(sourceId), incoming, Series::seriesId) { series, old ->
+            series.copy(id = old.id, favourite = old.favourite)
+        }
+        rows.chunked(UPSERT_CHUNK).forEach { insertOrReplace(it) }
+        stale.chunked(UPSERT_CHUNK).forEach { deleteByIds(it) }
+    }
 }
 
 @Dao
@@ -660,6 +731,26 @@ interface EpisodeDao {
 
     @Query("DELETE FROM episodes WHERE sourceId = :sourceId")
     suspend fun deleteForSource(sourceId: Long)
+
+    @Query("SELECT id, episodeId AS `key`, 0 AS favourite FROM episodes WHERE sourceId = :sourceId")
+    suspend fun keysForSource(sourceId: Long): List<VodRowKey>
+
+    /** See [MovieDao.insertOrReplace]. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrReplace(episodes: List<Episode>)
+
+    @Query("DELETE FROM episodes WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    /** Makes a playlist source's episodes exactly [incoming]. See [mergeByKey]. */
+    @Transaction
+    suspend fun replaceForSource(sourceId: Long, incoming: List<Episode>) {
+        val (rows, stale) = mergeByKey(keysForSource(sourceId), incoming, Episode::episodeId) { episode, old ->
+            episode.copy(id = old.id)
+        }
+        rows.chunked(UPSERT_CHUNK).forEach { insertOrReplace(it) }
+        stale.chunked(UPSERT_CHUNK).forEach { deleteByIds(it) }
+    }
 }
 
 @Dao

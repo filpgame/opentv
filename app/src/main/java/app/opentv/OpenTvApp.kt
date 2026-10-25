@@ -9,6 +9,7 @@ import android.app.Application
 import android.content.Context
 import app.opentv.core.LocaleUtils
 import app.opentv.core.ServiceLocator
+import app.opentv.data.model.SourceKind
 import app.opentv.data.repo.CatalogRepository
 import app.opentv.data.work.SyncWorker
 import coil.ImageLoader
@@ -102,6 +103,14 @@ class OpenTvApp : Application(), ImageLoaderFactory {
             if (seen < CatalogRepository.NORMALIZER_VERSION) {
                 graph.catalogRepository.renormalizeAll()
                 prefs.edit().putInt("normalizer_version", CatalogRepository.NORMALIZER_VERSION).apply()
+            }
+            // Same idea for playlist import, except the old rows cannot be re-sorted locally
+            // (a plain playlist keeps no group-title to re-read), so the playlist is fetched again.
+            if (prefs.getInt("playlist_layout_version", 0) < CatalogRepository.PLAYLIST_LAYOUT_VERSION) {
+                if (graph.sourceRepository.enabled().any { it.kind == SourceKind.M3U }) {
+                    SyncWorker.refreshNow(this@OpenTvApp)
+                }
+                prefs.edit().putInt("playlist_layout_version", CatalogRepository.PLAYLIST_LAYOUT_VERSION).apply()
             }
             // Runs on every launch. It is cheap when nothing is stale (feeds within their
             // refresh window are skipped), but it is what makes the free regional guide turn
