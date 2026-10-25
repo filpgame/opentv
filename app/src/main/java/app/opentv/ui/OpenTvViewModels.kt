@@ -40,6 +40,7 @@ import app.opentv.sync.SyncBundle
 import app.opentv.sync.SyncClient
 import app.opentv.sync.SyncPosition
 import app.opentv.sync.SyncServer
+import app.opentv.ui.vod.sortedByTitle
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -846,6 +847,11 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
         myList = { adult -> graph.catalogRepository.observeFavouriteSeries(adult) },
     )
 
+    // The DAO hands a category over newest first; the grid is sorted here by folded displayed title
+    // instead, because that is what its A–Z bar jumps through. Not in SQL: the stored name still
+    // carries provider prefixes (`4K-EN - …`) that only the Kotlin title cleaner strips. Sorted after
+    // the fold, so a group sorts by the title its poster shows, and before the chip filter, which
+    // keeps the order and so needs no second sort when a chip is switched.
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T : VodTitle> browse(
         selection: StateFlow<String?>,
@@ -859,6 +865,7 @@ class VodViewModel(app: Application) : AndroidViewModel(app) {
                     flowOf(CategoryBrowse())
                 } else {
                     (if (id == MY_LIST) myList(adult) else groups(id, adult))
+                        .map { all -> all.sortedByTitle { it.primary.displayTitle } }
                         .combine(filter) { all, chosen -> browseOf(id, all, chosen) }
                         .flowOn(Dispatchers.Default)
                         .onStart { emit(CategoryBrowse(id, loading = true)) }

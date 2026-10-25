@@ -286,17 +286,22 @@ private fun <T : VodTitle> VodCategoryGrid(
         // A new list starts at the top; a filter that empties most of a scrolled grid would otherwise
         // leave the view past its end.
         val gridState = remember(categoryId, browse.filter) { LazyGridState() }
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Adaptive(minSize = 140.dp),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            gridItems(groups, key = { it.primary.id }) { group ->
-                VodPosterCard(group, onOpen)
+        val jump = rememberAlphabetJump(groups, gridState) { it.primary.displayTitle }
+        // Grid and bar share a box under the chips, so the bar spans the posters only.
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            LazyVerticalGrid(
+                state = jump.gridState,
+                columns = GridCells.Adaptive(minSize = 140.dp),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize().padding(end = jump.barInset),
+            ) {
+                gridItems(groups, key = { it.primary.id }) { group ->
+                    VodPosterCard(group, onOpen, jump.posterModifier(group))
+                }
             }
+            AlphabetJumpOverlay(jump)
         }
     }
 }
@@ -387,7 +392,7 @@ internal fun <T : VodTitle> VodPosterRow(title: String, groups: List<VariantGrou
 
 /** One title's card: its poster version's art and title, badged with what versions exist. */
 @Composable
-private fun <T : VodTitle> VodPosterCard(group: VariantGroup<T>, onOpen: (T) -> Unit) {
+private fun <T : VodTitle> VodPosterCard(group: VariantGroup<T>, onOpen: (T) -> Unit, modifier: Modifier = Modifier) {
     PosterCard(
         title = group.primary.displayTitle,
         posterUrl = group.primary.posterUrl,
@@ -395,6 +400,7 @@ private fun <T : VodTitle> VodPosterCard(group: VariantGroup<T>, onOpen: (T) -> 
         rating = group.primary.rating,
         badges = versionBadges(group),
         onClick = { onOpen(group.primary) },
+        modifier = modifier,
     )
 }
 
