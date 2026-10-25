@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launcher icon's play triangle and its long shadow, redrawn at banner scale. The shadow is the
+  triangle swept along a 45-degree diagonal; it runs off the 320x180 canvas, so it needs no end.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#15000000"
+        android:pathData="M139,126L195,90L395,290L339,326z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M139,54L195,90L139,126z" />
+</vector>

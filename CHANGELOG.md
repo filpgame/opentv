@@ -18,6 +18,8 @@
   touched and stay where they are.
 - **Fix.** Switching Live TV, Movies and Shows all off no longer leaves the app with no tab; Live TV
   stays as the fallback.
+- **New app icon.** A white play button on blue replaces the TV-with-antenna icon, including the
+  Android TV home-screen banner and a themed (monochrome) icon for Android 13+.
 
 ## 0.11.8
 
