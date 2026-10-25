@@ -277,31 +277,45 @@ class EpgRepository(
      * Returns (channels with a working guide id, total channels).
      */
     suspend fun runMatcher(): Pair<Int, Int> {
+        val startNanos = System.nanoTime()
         val aliases = aliasDao.all()
         val index = EpgMatcher.buildIndex(aliases.map { it.epgId to it.displayName })
         // Only ids that actually have programmes count as "working" — a match against a
         // channel the guide lists but never fills is a guide that looks broken.
         val populated = programmeDao.channelIdsWithProgrammes().toHashSet()
 
-        val channels = channelDao.allForMatching()
+        var total = 0
         var matched = 0
+        val changes = ArrayList<Pair<Long, String?>>()
 
-        for (channel in channels) {
-            val newMatch = index.match(channel.groupKey)
-            if (newMatch != channel.matchedEpgId) {
-                channelDao.setMatchedEpgId(channel.id, newMatch)
+        var afterId = 0L
+        while (true) {
+            val page = channelDao.matchKeysAfter(afterId, CHANNEL_PAGE_SIZE)
+            if (page.isEmpty()) break
+            for (channel in page) {
+                val newMatch = index.match(channel.groupKey)
+                if (newMatch != channel.matchedEpgId) {
+                    changes += channel.id to newMatch
+                }
+                val works = channel.epgCandidates.any { it in populated } ||
+                    (newMatch != null && newMatch in populated)
+                if (works) matched++
             }
-            val works = channel.epgCandidates.any { it in populated } ||
-                (newMatch != null && newMatch in populated)
-            if (works) matched++
+            total += page.size
+            afterId = page.last().id
         }
+
+        // Batched, not one write per channel: every commit invalidates `channels`, and each
+        // invalidation re-runs the guide's whole-table queries — 300,000 rows, seconds apiece.
+        changes.chunked(BATCH_SIZE).forEach { channelDao.setMatchedEpgIds(it) }
 
         Log.i(
             TAG,
-            "Matcher: $matched of ${channels.size} channels have a working guide " +
-                "(${aliases.size} guide aliases, ${populated.size} populated guide channels)",
+            "Matcher: $matched of $total channels have a working guide " +
+                "(${aliases.size} guide aliases, ${populated.size} populated guide channels, " +
+                "${changes.size} updated, ${(System.nanoTime() - startNanos) / 1_000_000} ms)",
         )
-        return matched to channels.size
+        return matched to total
     }
 
     suspend fun setManualOverride(channelId: Long, epgId: String?) =
@@ -346,6 +360,9 @@ class EpgRepository(
 
         /** Writes per transaction. Large enough to be fast, small enough not to hold WAL open. */
         const val BATCH_SIZE = 500
+
+        /** Channels per paged read: a page of the narrow projections fits one cursor window. */
+        const val CHANNEL_PAGE_SIZE = 5_000
 
         /** Keep finished programmes for a day so "what was on" still works. */
         val RETENTION_PAST_MILLIS: Long = TimeUnit.DAYS.toMillis(1)

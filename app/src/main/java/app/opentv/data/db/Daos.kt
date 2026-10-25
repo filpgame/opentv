@@ -219,12 +219,36 @@ interface ChannelDao {
     @Query("UPDATE channels SET matchedEpgId = :epgId WHERE id = :id")
     suspend fun setMatchedEpgId(id: Long, epgId: String?)
 
+    /**
+     * Applies a batch of matcher results (channel id to guide id) in one transaction, so
+     * observers of `channels` re-query once per batch rather than once per channel.
+     */
+    @Transaction
+    suspend fun setMatchedEpgIds(changes: List<Pair<Long, String?>>) {
+        changes.forEach { (id, epgId) -> setMatchedEpgId(id, epgId) }
+    }
+
     @Query("UPDATE channels SET epgOverrideId = :epgId WHERE id = :id")
     suspend fun setEpgOverride(id: Long, epgId: String?)
 
     /** The matcher's working set: id, group key, and what is already known. */
     @Query("SELECT * FROM channels")
     suspend fun allForMatching(): List<Channel>
+
+    /**
+     * One page of the matcher's working set, in id order, with only the columns it reads.
+     *
+     * Paged by id rather than read in one query: Android fills a cursor in 2 MB windows and
+     * re-steps the statement from the first row for every window, so reading a 300,000-row
+     * table in one go costs time quadratic in its size (~20 s on a car head unit).
+     */
+    @Query(
+        """
+        SELECT id, groupKey, epgChannelId, matchedEpgId, epgOverrideId FROM channels
+        WHERE id > :afterId ORDER BY id LIMIT :limit
+        """
+    )
+    suspend fun matchKeysAfter(afterId: Long, limit: Int): List<ChannelMatchKeys>
 
     @Upsert
     suspend fun upsertAll(channels: List<Channel>)
@@ -310,6 +334,19 @@ interface CategoryDao {
 
 /** Projection for [CategoryDao.namesFor]. */
 data class CategoryName(val id: String, val name: String)
+
+/** Projection for [ChannelDao.matchKeysAfter]. */
+data class ChannelMatchKeys(
+    val id: Long,
+    val groupKey: String,
+    val epgChannelId: String?,
+    val matchedEpgId: String?,
+    val epgOverrideId: String?,
+) {
+    /** Same ids, same order as [Channel.epgCandidates]. */
+    val epgCandidates: List<String>
+        get() = listOfNotNull(epgOverrideId, epgChannelId, matchedEpgId)
+}
 
 /** Projection for [ChannelDao.channelCountsByCategory]. */
 data class CategoryChannelCount(val sourceId: Long, val categoryId: String, val count: Int)
