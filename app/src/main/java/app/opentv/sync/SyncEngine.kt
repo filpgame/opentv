@@ -8,9 +8,6 @@ package app.opentv.sync
 import app.opentv.core.ServiceLocator
 import app.opentv.data.model.PlaybackPosition
 import app.opentv.data.model.Profile
-import app.opentv.data.model.Recording
-import app.opentv.data.model.RecordingStatus
-import app.opentv.recording.SmbClient
 import kotlinx.serialization.json.Json
 
 /**
@@ -19,10 +16,9 @@ import kotlinx.serialization.json.Json
  * NAS sync all agree on what travels and how it merges.
  *
  * Merge policy (see [SyncBundle]): watch positions are two-way newest-wins; curation (profiles,
- * favourites, hidden channels, hidden categories) and NAS recordings are applied **additively** —
- * we spread what a peer has without deleting anything locally. That keeps a sync from ever wiping a
- * favourite you set on one box, un-hiding the structural separator rows the importer hides, or
- * dropping a recording that only one device knows about.
+ * favourites, hidden channels, hidden categories) is applied **additively** — we spread what a
+ * peer has without deleting anything locally. That keeps a sync from ever wiping a favourite you
+ * set on one box, or un-hiding the structural separator rows the importer hides.
  */
 class SyncEngine(private val graph: ServiceLocator.Graph) {
 
@@ -33,15 +29,13 @@ class SyncEngine(private val graph: ServiceLocator.Graph) {
         val positions: Int = 0,
         val favourites: Int = 0,
         val hidden: Int = 0,
-        val recordings: Int = 0,
     ) {
-        val total: Int get() = positions + favourites + hidden + recordings
+        val total: Int get() = positions + favourites + hidden
 
         operator fun plus(other: MergeResult): MergeResult = MergeResult(
             positions = positions + other.positions,
             favourites = favourites + other.favourites,
             hidden = hidden + other.hidden,
-            recordings = recordings + other.recordings,
         )
     }
 
@@ -67,27 +61,6 @@ class SyncEngine(private val graph: ServiceLocator.Graph) {
                 updatedAtMillis = pos.updatedAtMillis,
             )
         }
-        // Only finished recordings that live on the shared NAS travel — a device-local (file://)
-        // capture can't be opened from another box, so sharing its metadata would just create a
-        // library row that fails to play everywhere but here.
-        val recordings = graph.recordingRepository.all()
-            .filter { it.status == RecordingStatus.COMPLETED && SmbClient.isSmb(it.filePath) }
-            .map { r ->
-                SyncRecording(
-                    channelName = r.channelName,
-                    logoUrl = r.logoUrl,
-                    title = r.title,
-                    description = r.description,
-                    filePath = r.filePath,
-                    streamUrl = r.streamUrl,
-                    userAgent = r.userAgent,
-                    scheduledStartMillis = r.scheduledStartMillis,
-                    scheduledEndMillis = r.scheduledEndMillis,
-                    startedAtMillis = r.startedAtMillis,
-                    endedAtMillis = r.endedAtMillis,
-                    sizeBytes = r.sizeBytes,
-                )
-            }
         return SyncBundle(
             generatedAtMillis = System.currentTimeMillis(),
             profiles = profiles.map { it.name },
@@ -97,7 +70,6 @@ class SyncEngine(private val graph: ServiceLocator.Graph) {
             favouriteMovies = graph.catalogRepository.favouriteMovieUrls(),
             favouriteSeries = graph.catalogRepository.favouriteSeriesIds(),
             hiddenCategories = graph.settings.hiddenCategories.value.toList(),
-            recordings = recordings,
         )
     }
 
@@ -147,37 +119,6 @@ class SyncEngine(private val graph: ServiceLocator.Graph) {
             )
         }
 
-        // NAS recordings — insert any smb:// recording we don't already have, keyed by its locator.
-        // Never touch an existing row; a peer's copy and ours are the same file on the same NAS.
-        var recordings = 0
-        for (rec in bundle.recordings) {
-            if (!SmbClient.isSmb(rec.filePath)) continue
-            if (graph.recordingRepository.byFilePath(rec.filePath) != null) continue
-            val inserted = runCatching {
-                graph.recordingRepository.insert(
-                    Recording(
-                        // Ids from the source device mean nothing here; the row is self-contained.
-                        channelId = 0,
-                        sourceId = 0,
-                        channelName = rec.channelName,
-                        logoUrl = rec.logoUrl,
-                        title = rec.title,
-                        description = rec.description,
-                        filePath = rec.filePath,
-                        streamUrl = rec.streamUrl,
-                        userAgent = rec.userAgent,
-                        scheduledStartMillis = rec.scheduledStartMillis,
-                        scheduledEndMillis = rec.scheduledEndMillis,
-                        startedAtMillis = rec.startedAtMillis,
-                        endedAtMillis = rec.endedAtMillis,
-                        status = RecordingStatus.COMPLETED,
-                        sizeBytes = rec.sizeBytes,
-                    ),
-                )
-            }.isSuccess
-            if (inserted) recordings++
-        }
-
         // Watch positions — two-way, newest wins.
         var positions = 0
         for (item in bundle.positions) {
@@ -206,7 +147,6 @@ class SyncEngine(private val graph: ServiceLocator.Graph) {
             positions = positions,
             favourites = favourites,
             hidden = hidden,
-            recordings = recordings,
         )
     }
 

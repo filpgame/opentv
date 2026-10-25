@@ -7,11 +7,12 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_back">Back</string>
     <string name="common_save">Save</string>
+    <string name="common_username">Username</string>
+    <string name="common_password">Password</string>
+    <string name="common_test_connection">Test connection</string>
     <string name="common_remove">Remove</string>
     <string name="common_edit">Edit</string>
     <string name="common_play">Play</string>
-    <string name="common_stop">Stop</string>
-    <string name="common_delete">Delete</string>
     <string name="common_selected">Selected</string>
     <string name="exit_title">Leave OpenTV?</string>
     <string name="exit_body">You\'ll go back to your TV\'s home screen.</string>
@@ -27,7 +28,6 @@
     <string name="nav_live_tv">Live TV</string>
     <string name="nav_movies">Movies</string>
     <string name="nav_shows">Shows</string>
-    <string name="nav_recordings">Recordings</string>
     <string name="nav_search">Search</string>
     <string name="nav_settings">Settings</string>
 
@@ -37,20 +37,12 @@
     <string name="guide_all_channels">All channels</string>
     <string name="guide_watch_from_start">▶  Watch from start (catch-up)</string>
     <string name="guide_catchup_link_failed">Couldn\'t build the catch-up link</string>
-    <string name="guide_cancel_reminder">🔔  Cancel reminder</string>
-    <string name="guide_reminder_removed">Reminder removed</string>
-    <string name="guide_remind_me">🔔  Remind me</string>
-    <string name="guide_reminder_set">🔔 Reminder set: %1$s</string>
-    <string name="guide_auto_switch">📺  Auto-switch when it starts</string>
-    <string name="guide_will_switch">📺 Will switch to %1$s at start</string>
     <string name="guide_watch_channel">Watch channel</string>
     <string name="guide_now_title">Now: %1$s</string>
     <string name="guide_watch">▶  Watch</string>
     <string name="guide_open_external">Open in external player</string>
     <string name="guide_play_channel_with">Play channel with</string>
     <string name="guide_no_external_player">No external player installed</string>
-    <string name="guide_record_now_playing">●  Record what\'s on now</string>
-    <string name="guide_later_header">Later — record or remind</string>
     <string name="guide_no_info">No guide information</string>
     <string name="guide_next_prefix">Next  %1$s  %2$s</string>
     <string name="guide_loading_channels">Loading your channels</string>
@@ -65,8 +57,6 @@
     <string name="guide_load_failed_desc">Check your provider details and your connection, then try again.</string>
     <string name="guide_edit_provider">Provider setup</string>
     <string name="guide_watch_label">Watch</string>
-    <string name="guide_cd_stop_recording">Stop recording</string>
-    <string name="guide_cd_record_now">Record what\'s on now</string>
     <string name="guide_cd_refresh">Refresh</string>
     <string name="guide_cd_add_source">Add source</string>
     <string name="guide_prev_day">Previous day</string>
@@ -80,40 +70,6 @@
     <string name="guide_pager_now">Now</string>
     <string name="guide_pager_later">Later</string>
 
-    <!-- ============================ Recordings & reminders ============================ -->
-    <string name="rec_recording_stopped">Recording stopped</string>
-    <string name="rec_recording_started_see_tab">● Recording %1$s — see the Recordings tab</string>
-    <string name="rec_stop_recording">■ Stop recording</string>
-    <string name="rec_record_now">● Record now</string>
-    <string name="rec_schedule_recording">● Schedule recording</string>
-    <string name="rec_scheduled_title">Scheduled: %1$s</string>
-    <string name="rec_recording_channel">● Recording %1$s</string>
-    <string name="rec_record_series">Record whole series</string>
-    <string name="rec_record_series_named">Record whole series — %1$s</string>
-    <string name="rec_series_recording_set">Series recording set for \"%1$s\"</string>
-    <string name="rec_screen_title">Recordings &amp; reminders</string>
-    <string name="rec_screen_desc">Record live TV to this box or your NAS, and set reminders for what\'s coming up.</string>
-    <string name="rec_empty_state">Nothing here yet. Press Record in the player, or open a channel in the guide to schedule a recording or set a reminder.</string>
-    <string name="rec_upcoming_reminders">Upcoming reminders</string>
-    <string name="rec_reminder_autoswitch">Auto-switch</string>
-    <string name="rec_reminder_plain">Reminder</string>
-    <string name="rec_cancel_reminder">Cancel reminder</string>
-    <string name="rec_status_scheduled">Scheduled · %1$s</string>
-    <string name="rec_status_recording">● Recording · %1$s · %2$s</string>
-    <string name="rec_status_failed">Failed · %1$s</string>
-    <string name="rec_error_unknown">unknown error</string>
-    <string name="rec_notification_one">Recording 1 programme</string>
-    <string name="rec_notification_many">Recording %1$d programmes</string>
-    <string name="rec_channel_name">Recording</string>
-    <string name="rec_channel_desc">Shown while OpenTV is recording</string>
-    <string name="rec_error_nothing">Nothing was recorded</string>
-    <string name="rec_error_usb_no_folder">No USB folder chosen. Open Recording settings and pick a folder on your drive.</string>
-    <string name="rec_error_usb_unavailable">USB drive not available. Re-plug the drive and choose the folder again in Recording settings.</string>
-    <string name="rec_background_prompt_title">Keep recording when you leave?</string>
-    <string name="rec_background_prompt_body">Android may stop this recording when the screen sleeps or you leave OpenTV. Allow OpenTV to ignore battery optimisation so recordings keep running, even in standby — the way a set-top box does.</string>
-    <string name="rec_background_prompt_allow">Allow</string>
-    <string name="rec_background_prompt_not_now">Not now</string>
-
     <!-- ============================ Player controls ============================ -->
     <string name="player_rewind">Rewind</string>
     <string name="player_pause">Pause</string>
@@ -122,7 +78,6 @@
     <string name="player_audio">Audio</string>
     <string name="player_quality">Quality</string>
     <string name="player_aspect">Aspect</string>
-    <string name="player_record">Record</string>
     <string name="player_pop_out">Pop out</string>
     <string name="player_last">Last</string>
     <string name="player_quality_standard">Standard</string>
@@ -153,8 +108,6 @@
     <string name="settings_webmanager_subtitle">Organise channels in a browser, with a keyboard and mouse</string>
     <string name="settings_display_title">Display &amp; playback</string>
     <string name="settings_display_subtitle">Theme, subtitles, live guide preview</string>
-    <string name="settings_recording_title">Recording</string>
-    <string name="settings_recording_subtitle">Where recordings are saved — this box or a NAS</string>
     <string name="settings_parental_title">Parental controls</string>
     <string name="settings_parental_subtitle">PIN lock and hide adult categories</string>
     <string name="settings_sync_title">Sync watch history</string>
@@ -193,6 +146,8 @@
     <string name="settings_subtitles_subtitle">The default for new channels. While watching, the Subtitles button on the player lets you pick a specific track or turn them off.</string>
     <string name="settings_resume_title">Resume last channel on startup</string>
     <string name="settings_resume_subtitle">Open the app straight into the channel you were last watching, instead of the guide. Press Back to reach the guide.</string>
+    <string name="settings_live_pause">Pause &amp; rewind live TV</string>
+    <string name="settings_live_pause_desc">Hold a couple of minutes of live TV in memory so you can pause and rewind it (experimental — uses more memory)</string>
     <string name="settings_sleep_timer">Sleep timer</string>
     <string name="settings_sleep_off_desc">Off — playback keeps going until you stop it.</string>
     <string name="settings_sleep_on_desc">On — playback will stop in about %1$d min.</string>
@@ -239,59 +194,6 @@
     <string name="provider_stream_format_ts">MPEG-TS (.ts)</string>
     <string name="provider_stream_format_hint">HLS is the default. If channels won\'t play, try MPEG-TS — some providers only offer .ts.</string>
 
-    <!-- ============================ Recording settings ============================ -->
-    <string name="recset_desc">Choose where recordings are saved. Internal keeps them on this device; a USB drive stores them on removable storage; NAS saves them to a shared folder on your network. All still play back here.</string>
-    <string name="recset_save_to">Save recordings to</string>
-    <string name="recset_internal_label">This device (internal storage)</string>
-    <string name="recset_smb_label">NAS / network share (SMB)</string>
-    <string name="recset_smb_subtitle">Synology, a shared Windows folder, or any SMB2/3 server</string>
-    <string name="recset_usb_label">USB / external drive</string>
-    <string name="recset_usb_subtitle">A drive plugged into this device (formatted exFAT or FAT32)</string>
-    <string name="recset_usb_section">USB folder</string>
-    <string name="recset_usb_choose">Choose folder</string>
-    <string name="recset_usb_change">Change folder</string>
-    <string name="recset_usb_saving_to">Saving to: %1$s</string>
-    <string name="recset_usb_none">No folder chosen yet</string>
-    <string name="recset_usb_hint">Plug in a USB drive or external storage formatted exFAT or FAT32, then choose a folder on it. Recordings are written straight to that folder and still play back and delete inside OpenTV.</string>
-    <string name="recset_usb_need_folder">Choose a folder before saving to USB.</string>
-    <string name="recset_usb_no_picker">No folder picker is available on this device.</string>
-    <string name="recset_nas_connection">NAS connection</string>
-    <string name="recset_field_server">Server (IP or hostname)</string>
-    <string name="recset_field_share">Share name</string>
-    <string name="recset_field_folder">Folder (within the share)</string>
-    <string name="recset_field_username">Username</string>
-    <string name="recset_field_password">Password</string>
-    <string name="recset_status_testing">Testing…</string>
-    <string name="recset_status_connected">Connected — the share is reachable and writable.</string>
-    <string name="recset_status_failed">Couldn\'t connect: %1$s</string>
-    <string name="recset_test_connection">Test connection</string>
-    <string name="recset_status_saved">Saved.</string>
-    <!-- Recording behaviour -->
-    <string name="recset_behaviour_title">Recording behaviour</string>
-    <string name="recset_pad_start">Start early</string>
-    <string name="recset_pad_start_desc">Begin recording this many minutes before the listed start time</string>
-    <string name="recset_pad_end">End late</string>
-    <string name="recset_pad_end_desc">Keep recording this many minutes after the listed end, so overruns aren\'t cut</string>
-    <string name="recset_minutes_short">min</string>
-    <string name="recset_autoswitch">Auto-switch when recording starts</string>
-    <string name="recset_autoswitch_desc">On a single-connection provider, move the screen onto a recording as it starts (with a 30-second warning) so your live stream isn\'t cut off</string>
-    <string name="recset_livepause">Pause &amp; rewind live TV</string>
-    <string name="recset_livepause_desc">Hold a couple of minutes of live TV in memory so you can pause and rewind it (experimental — uses more memory)</string>
-    <string name="recset_pw_show">Show password</string>
-    <string name="recset_pw_hide">Hide password</string>
-    <string name="recset_storage_title">Storage</string>
-    <string name="recset_storage_reading">Reading…</string>
-    <string name="recset_storage_used">%1$s used · %2$d recordings</string>
-    <string name="recset_storage_free">%1$s free on this device</string>
-    <string name="recset_background_title">Recording in the background</string>
-    <string name="recset_background_allowed">Allowed</string>
-    <string name="recset_background_not_allowed">Not allowed</string>
-    <string name="recset_background_fix">Fix</string>
-    <string name="recset_background_desc">Android may stop recordings when the device sleeps or you leave OpenTV, unless OpenTV is allowed to ignore battery optimisation. Allowing it keeps recordings running even in standby, like a set-top box.</string>
-    <string name="recset_background_on_title">Background recording is on</string>
-    <string name="recset_background_on_desc">Recordings will keep running when you leave OpenTV or the TV goes to sleep.</string>
-    <string name="recset_background_toast">Background recording enabled — recordings will keep going in the background.</string>
-
     <!-- ============================ TV guide (EPG) settings ============================ -->
     <string name="epg_updating">Updating…</string>
     <string name="epg_update_now">Update guide now</string>
@@ -319,14 +221,24 @@
     <string name="sync_synced_items">Synced %1$d item(s).</string>
     <string name="sync_nas">NAS (cloud)</string>
     <string name="sync_nas_title">Sync through your NAS</string>
-    <string name="sync_nas_desc">Sync favourites, watch history and NAS recordings between all your devices through your own NAS. No server, no account.</string>
-    <string name="sync_nas_needs_setup">Set up your NAS under Settings → Recording first, then come back here.</string>
+    <string name="sync_nas_desc">Sync favourites and watch history between all your devices through your own NAS. No server, no account.</string>
+    <string name="sync_nas_needs_setup">Fill in and save the NAS connection above first.</string>
     <string name="sync_nas_sync_now">Sync now</string>
     <string name="sync_nas_syncing">Syncing…</string>
     <string name="sync_nas_done">Synced %1$d item(s) from %2$d device(s).</string>
     <string name="sync_nas_uploaded">Saved this device to the NAS. No other devices have synced here yet.</string>
-    <string name="sync_nas_failed">Couldn\'t reach your NAS. Check it\'s on and the details in Recording settings are right.</string>
+    <string name="sync_nas_failed">Couldn\'t reach your NAS. Check it\'s on and the connection details above are right.</string>
     <string name="sync_nas_auto">Auto-sync when the app opens</string>
+    <string name="nas_connection">NAS connection</string>
+    <string name="nas_field_server">Server (IP or hostname)</string>
+    <string name="nas_field_share">Share name</string>
+    <string name="nas_field_folder">Folder (within the share)</string>
+    <string name="nas_status_testing">Testing…</string>
+    <string name="nas_status_connected">Connected — the share is reachable and writable.</string>
+    <string name="nas_status_failed">Couldn\'t connect: %1$s</string>
+    <string name="nas_status_saved">Saved.</string>
+    <string name="nas_pw_show">Show password</string>
+    <string name="nas_pw_hide">Hide password</string>
 
     <!-- ============================ About ============================ -->
     <string name="about_title">About OpenTV</string>
@@ -453,48 +365,6 @@
     <string name="vod_detail_loading">Loading…</string>
     <string name="vod_person_title">With %1$s</string>
     <string name="vod_person_empty">Nothing else with %1$s in your library.</string>
-
-    <!-- ============================ Reminder notification ============================ -->
-    <string name="reminder_starting_now">Starting now on %1$s</string>
-    <string name="reminder_watch_now">Watch now</string>
-    <string name="reminder_channel_name">Programme reminders</string>
-    <string name="reminder_channel_desc">Alerts you when a programme you set a reminder for begins</string>
-    <!-- Recording quality picker + clash -->
-    <string name="rec_quality_label">Record in</string>
-    <string name="rec_record_from">Record from</string>
-    <string name="rec_source_unknown">Provider</string>
-    <string name="rec_quality_sd">SD</string>
-    <string name="rec_clashes">Overlaps another recording</string>
-
-    <!-- Recordings: sections, scheduling detail, retry, profile -->
-    <string name="rec_section_series_links">Series links</string>
-    <string name="rec_series_upcoming">%1$s · %2$d scheduled</string>
-    <string name="rec_series_waiting">%1$s · waiting for next airing</string>
-    <string name="rec_series_next_at">%1$s · records %2$s</string>
-    <string name="rec_series_next_more">Next records %1$s · +%2$d more</string>
-    <string name="rec_series_remove">Remove series link</string>
-    <string name="rec_section_scheduled">Scheduled</string>
-    <string name="rec_section_recorded">Recorded</string>
-    <string name="rec_status_scheduled_at">Records %1$s · %2$s</string>
-    <string name="rec_status_failed_at">Failed · %1$s · %2$s</string>
-    <string name="rec_for_profile">For %1$s</string>
-    <string name="rec_retry">Retry</string>
-    <string name="rec_watch_live">Watch</string>
-    <string name="rec_watching_live_badge">Recording — live</string>
-    <!-- Single-connection auto-switch -->
-    <string name="rec_switch_now_title">Recording %1$s</string>
-    <string name="rec_switch_now_text">Now recording on %1$s — tap to watch</string>
-    <string name="rec_switch_soon_title">Recording soon: %1$s</string>
-    <string name="rec_switch_soon_text">Starts on %1$s in 30s — this screen will switch to it</string>
-    <string name="rec_switch_banner">“%1$s” records on %2$s — this screen will switch</string>
-    <string name="rec_switch_keep_watching">Keep watching</string>
-    <!-- Guard before opening live TV while a recording runs (single connection) -->
-    <string name="rec_live_warn_title">Recording in progress</string>
-    <string name="rec_live_warn_body">You\'re on a single connection, so watching live now will stop your recording of “%1$s”.</string>
-    <string name="rec_live_warn_watch">Watch live (stop recording)</string>
-    <string name="rec_live_warn_keep">Keep recording</string>
-    <string name="rec_switch_channel_name">Recording auto-switch</string>
-    <string name="rec_switch_channel_desc">Warns before switching the screen to a scheduled recording</string>
 
     <!-- Metadata / TMDB back-fill -->
     <string name="settings_section_metadata">Metadata</string>

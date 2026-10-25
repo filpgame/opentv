@@ -46,7 +46,7 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
-# SMBJ (NAS recording) and its transitive deps. It uses reflection (mbassador event bus) and
+# SMBJ (NAS sync) and its transitive deps. It uses reflection (mbassador event bus) and
 # pulls optional bits R8 would otherwise trip over. Keep its classes and silence the warnings so
 # the shrunk release still connects to a NAS.
 -keep class com.hierynomus.** { *; }

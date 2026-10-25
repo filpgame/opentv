@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.opentv.R
+import app.opentv.core.AppSettings
 import app.opentv.sync.SyncServer
 import app.opentv.ui.SyncViewModel
 
@@ -58,6 +62,8 @@ fun SyncScreen(
     Column(
         Modifier
             .fillMaxSize()
+            // The NAS pane carries the connection form, which is taller than a TV screen.
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,8 +187,8 @@ private fun ReceivePane(viewModel: SyncViewModel) {
 
 /**
  * Free, server-less "cloud" sync through the user's own NAS: every device drops a small JSON file
- * into a shared folder on the SMB share and reads the others'. No server, no account. Requires the
- * NAS to be set up under Recording settings first.
+ * into a shared folder on the SMB share and reads the others'. No server, no account. The share's
+ * connection details (server, share, login) are filled in right here.
  */
 @Composable
 private fun NasPane(viewModel: SyncViewModel) {
@@ -190,6 +196,7 @@ private fun NasPane(viewModel: SyncViewModel) {
     val autoSync by viewModel.nasAutoSync.collectAsState()
     val smbHost by viewModel.smbHost.collectAsState()
     val configured = smbHost.isNotBlank()
+    val settings = AppSettings.get(LocalContext.current)
 
     Card {
         Column(Modifier.padding(20.dp).widthIn(max = 640.dp)) {
@@ -201,6 +208,9 @@ private fun NasPane(viewModel: SyncViewModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
+
+            NasConnectionForm(settings)
+            Spacer(Modifier.height(20.dp))
 
             if (!configured) {
                 Text(

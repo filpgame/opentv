@@ -48,7 +48,6 @@ import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PictureInPictureAlt
@@ -99,13 +98,10 @@ import app.opentv.R
 import app.opentv.core.ServiceLocator
 import app.opentv.core.SleepTimer
 import app.opentv.core.findActivity
-import app.opentv.core.requestIgnoreBatteryOptimizations
 import app.opentv.data.model.Channel
 import app.opentv.data.model.shownName
 import app.opentv.player.PlaybackQueue
 import app.opentv.player.PlayerController
-import app.opentv.ui.RecordingBackgroundDialog
-import app.opentv.ui.RecordingBackgroundPrompt
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -149,8 +145,6 @@ fun PlayerScreen(
     }
     val state by controller.state.collectAsState()
     val tracks by controller.tracks.collectAsState()
-    // What's recording right now, so the Record button can show as armed for this channel.
-    val activeRecordings by graph.recordingRepository.observeActive().collectAsState(initial = emptyList())
 
     // Hold the screen awake while the player is on screen. A view-level keepScreenOn flag isn't
     // reliable on every TV box, so we set the window flag on the Activity directly — that's what
@@ -181,9 +175,6 @@ fun PlayerScreen(
     var panel by remember { mutableStateOf(Panel.NONE) }
     var channelListVisible by remember { mutableStateOf(false) }
     var interaction by remember { mutableIntStateOf(0) }
-    // Offered once per session the first time the user records here while OpenTV isn't exempt from
-    // battery optimisation, so the capture survives the screen sleeping. Never blocks recording.
-    var showBackgroundPrompt by remember { mutableStateOf(false) }
 
     // Picture-in-picture. While the player is on it is "eligible" to shrink to a floating window
     // (pressing Home does it, handled in MainActivity); [inPip] drives hiding all the chrome.
@@ -252,21 +243,6 @@ fun PlayerScreen(
         val cur = queue.indexOfFirst { it.id == currentId }.let { if (it < 0) 0 else it }
         val next = (cur + delta).coerceIn(0, queue.size - 1)
         if (next != cur) playChannelId(queue[next].id)
-    }
-
-    fun toggleRecord() {
-        val active = activeRecordings.firstOrNull { it.channelId == currentId }
-        if (active != null) {
-            graph.recordingEngine.stop(active.id)
-        } else {
-            val channel = variants.firstOrNull { it.id == currentId } ?: return
-            scope.launch { graph.recordingEngine.startChannel(channel) }
-            if (RecordingBackgroundPrompt.shouldShow(context)) {
-                RecordingBackgroundPrompt.markShown()
-                showBackgroundPrompt = true
-            }
-        }
-        interaction++
     }
 
     LaunchedEffect(channelId) {
@@ -564,14 +540,6 @@ fun PlayerScreen(
                     BarChip(Icons.Filled.AspectRatio, stringResource(R.string.player_aspect), panel == Panel.ASPECT) {
                         panel = if (panel == Panel.ASPECT) Panel.NONE else Panel.ASPECT; interaction++
                     }
-                    Spacer(Modifier.width(10.dp))
-                    val recordingThis = activeRecordings.any { it.channelId == currentId }
-                    BarChip(
-                        icon = Icons.Filled.FiberManualRecord,
-                        label = if (recordingThis) stringResource(R.string.common_stop) else stringResource(R.string.player_record),
-                        selected = recordingThis,
-                        iconTint = Color(0xFFE53935),
-                    ) { toggleRecord() }
                     if (pipSupported) {
                         Spacer(Modifier.width(10.dp))
                         BarChip(Icons.Filled.PictureInPictureAlt, stringResource(R.string.player_pop_out), false) {
@@ -637,16 +605,6 @@ fun PlayerScreen(
                 }
             }
         }
-    }
-
-    if (showBackgroundPrompt) {
-        RecordingBackgroundDialog(
-            onAllow = {
-                showBackgroundPrompt = false
-                context.requestIgnoreBatteryOptimizations()
-            },
-            onDismiss = { showBackgroundPrompt = false },
-        )
     }
 }
 
@@ -867,7 +825,6 @@ private fun BarChip(
     label: String,
     selected: Boolean,
     focusRequester: FocusRequester? = null,
-    iconTint: Color? = null,
     onClick: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -892,7 +849,7 @@ private fun BarChip(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = label, tint = if (focused) content else (iconTint ?: content))
+        Icon(icon, contentDescription = label, tint = content)
         Spacer(Modifier.width(6.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = content)
     }

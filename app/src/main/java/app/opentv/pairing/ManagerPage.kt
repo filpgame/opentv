@@ -141,22 +141,22 @@ object ManagerPage {
               </div>
             </details>
 
-            <details class="rec" id="recCard">
-              <summary>Recording to NAS (SMB)</summary>
+            <details class="rec" id="nasCard">
+              <summary>NAS (SMB) for sync</summary>
               <div class="body">
-                <p class="hint">Point recordings at a network drive. Saved straight to your TV — the password stays on the TV.</p>
+                <p class="hint">The network drive your devices sync favourites and watch history through. Saved straight to your TV — the password stays on the TV.</p>
                 <label class="field"><span>Server (IP address)</span>
-                  <input id="recHost" placeholder="192.168.0.214" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                  <input id="nasHost" placeholder="192.168.0.214" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
                 <label class="field"><span>Share</span>
-                  <input id="recShare" placeholder="OpenTV" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                  <input id="nasShare" placeholder="OpenTV" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
                 <label class="field"><span>Folder (optional)</span>
-                  <input id="recFolder" placeholder="(leave blank)" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                  <input id="nasFolder" placeholder="(leave blank)" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
                 <label class="field"><span>Username</span>
-                  <input id="recUser" placeholder="record" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+                  <input id="nasUser" placeholder="opentv" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
                 <label class="field"><span>Password</span>
-                  <input id="recPass" type="password" autocomplete="off"></label>
-                <button class="save" id="recSave">Save &amp; use NAS</button>
-                <button class="save" id="recTest" style="background:var(--surface2);border-color:var(--line);margin-left:8px;">Test connection</button>
+                  <input id="nasPass" type="password" autocomplete="off"></label>
+                <button class="save" id="nasSave">Save NAS</button>
+                <button class="save" id="nasTest" style="background:var(--surface2);border-color:var(--line);margin-left:8px;">Test connection</button>
               </div>
             </details>
 
@@ -419,47 +419,47 @@ object ManagerPage {
               .catch(function(){ setStatus(UNREACH, 'err'); });
           }
 
-          // ---- Recording / NAS settings ------------------------------------------------------
-          async function loadRecording(){
+          // ---- NAS (sync) settings -----------------------------------------------------------
+          async function loadNas(){
             try {
-              var r = await getJson('/recording');
-              el('recHost').value = r.host || '';
-              el('recShare').value = r.share || '';
-              el('recFolder').value = r.folder || '';
-              el('recUser').value = r.user || '';
-              el('recPass').placeholder = r.hasPassword ? '•••• (unchanged)' : '';
-              if (r.target === 'SMB') el('recCard').open = true;
+              var r = await getJson('/nas');
+              el('nasHost').value = r.host || '';
+              el('nasShare').value = r.share || '';
+              el('nasFolder').value = r.folder || '';
+              el('nasUser').value = r.user || '';
+              el('nasPass').placeholder = r.hasPassword ? '•••• (unchanged)' : '';
+              if (r.host) el('nasCard').open = true;
             } catch (e) { /* leave the form blank if the TV can't be reached yet */ }
           }
           function smbBody(){
             return {
-              host: el('recHost').value.trim(),
-              share: el('recShare').value.trim(),
-              folder: el('recFolder').value.trim(),
-              user: el('recUser').value.trim(),
-              password: el('recPass').value
+              host: el('nasHost').value.trim(),
+              share: el('nasShare').value.trim(),
+              folder: el('nasFolder').value.trim(),
+              user: el('nasUser').value.trim(),
+              password: el('nasPass').value
             };
           }
           function showTest(r){
-            if (r && r.ok) setStatus('Connected to the NAS — recordings will save there. ✓', 'ok');
+            if (r && r.ok) setStatus('Connected to the NAS. ✓', 'ok');
             else setStatus("Couldn't reach the NAS: " + ((r && r.error) || 'check the details') , 'err');
           }
-          el('recSave').onclick = function(){
+          el('nasSave').onclick = function(){
             var body = smbBody();
             if (!body.host || !body.share) { setStatus('Server and share are required.', 'err'); return; }
             setStatus('Saving & testing…');
-            post('/recording', body)
+            post('/nas', body)
               .then(function(){
-                el('recPass').value = '';
-                el('recPass').placeholder = '•••• (unchanged)';
-                return post('/recording/test', {});   // test the settings we just stored
+                el('nasPass').value = '';
+                el('nasPass').placeholder = '•••• (unchanged)';
+                return post('/nas/test', {});   // test the settings we just stored
               })
               .then(showTest)
               .catch(function(){ setStatus(UNREACH, 'err'); });
           };
-          el('recTest').onclick = function(){
+          el('nasTest').onclick = function(){
             setStatus('Testing…');
-            post('/recording/test', smbBody())
+            post('/nas/test', smbBody())
               .then(showTest)
               .catch(function(){ setStatus(UNREACH, 'err'); });
           };
@@ -511,7 +511,7 @@ object ManagerPage {
           };
 
           loadMeta();
-          loadRecording();
+          loadNas();
         </script>
         </body>
         </html>

@@ -23,11 +23,7 @@ import app.opentv.data.model.Movie
 import app.opentv.data.model.PlaybackPosition
 import app.opentv.data.model.Profile
 import app.opentv.data.model.Programme
-import app.opentv.data.model.Recording
-import app.opentv.data.model.RecordingStatus
-import app.opentv.data.model.Reminder
 import app.opentv.data.model.Series
-import app.opentv.data.model.SeriesRule
 import app.opentv.data.model.Source
 import app.opentv.data.model.SourceKind
 import app.opentv.data.model.StreamKind
@@ -47,11 +43,6 @@ class Converters {
 
     @TypeConverter fun stringToStreamKind(value: String): StreamKind =
         runCatching { StreamKind.valueOf(value) }.getOrDefault(StreamKind.LIVE)
-
-    @TypeConverter fun recordingStatusToString(value: RecordingStatus): String = value.name
-
-    @TypeConverter fun stringToRecordingStatus(value: String): RecordingStatus =
-        runCatching { RecordingStatus.valueOf(value) }.getOrDefault(RecordingStatus.FAILED)
 }
 
 @Database(
@@ -67,11 +58,8 @@ class Converters {
         Episode::class,
         PlaybackPosition::class,
         Profile::class,
-        Recording::class,
-        SeriesRule::class,
-        Reminder::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -87,9 +75,6 @@ abstract class OpenTvDatabase : RoomDatabase() {
     abstract fun episodes(): EpisodeDao
     abstract fun positions(): PlaybackPositionDao
     abstract fun profiles(): ProfileDao
-    abstract fun recordings(): RecordingDao
-    abstract fun seriesRules(): SeriesRuleDao
-    abstract fun reminders(): ReminderDao
 
     companion object {
         /**
@@ -272,6 +257,28 @@ abstract class OpenTvDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v11 → v12: recording and reminders are gone, so their tables (and indices) are dropped.
+         * This has to be a real migration: with the entities removed and the version unchanged Room
+         * would refuse to open the file, and a bare version bump would fall through to the
+         * destructive fallback below and take every source, favourite and override with it. The
+         * last statement clears resume rows saved for played recordings (`rec:<id>`), which would
+         * otherwise sit in the "recent" list forever with nothing to resolve them.
+         */
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_recordings_status`")
+                db.execSQL("DROP INDEX IF EXISTS `index_recordings_channelId`")
+                db.execSQL("DROP TABLE IF EXISTS `recordings`")
+                db.execSQL("DROP INDEX IF EXISTS `index_series_rules_channelId`")
+                db.execSQL("DROP TABLE IF EXISTS `series_rules`")
+                db.execSQL("DROP INDEX IF EXISTS `index_reminders_startUtcMillis`")
+                db.execSQL("DROP INDEX IF EXISTS `index_reminders_channelId`")
+                db.execSQL("DROP TABLE IF EXISTS `reminders`")
+                db.execSQL("DELETE FROM `playback_positions` WHERE `mediaKey` LIKE 'rec:%'")
+            }
+        }
+
         fun build(context: Context): OpenTvDatabase =
             Room.databaseBuilder(context, OpenTvDatabase::class.java, "opentv.db")
                 // WAL keeps guide writes from blocking guide reads, so a background EPG
@@ -280,6 +287,7 @@ abstract class OpenTvDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
                     MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+                    MIGRATION_11_12,
                 )
                 /*
                  * Pre-1.0 policy: schema changes drop and rebuild the database. Everything

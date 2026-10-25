@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Person
@@ -67,10 +66,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.opentv.data.model.Channel
 import app.opentv.data.model.Movie
-import app.opentv.data.model.Recording
 import app.opentv.data.model.Series
 import app.opentv.ui.channels.HomeScreen
-import app.opentv.ui.recordings.RecordingsScreen
 import app.opentv.ui.vod.MoviesScreen
 import app.opentv.ui.vod.SeriesScreen
 
@@ -84,7 +81,6 @@ enum class Tab(val labelRes: Int, val icon: ImageVector) {
     LIVE(R.string.nav_live_tv, Icons.Filled.LiveTv),
     MOVIES(R.string.nav_movies, Icons.Filled.Movie),
     SHOWS(R.string.nav_shows, Icons.Filled.Tv),
-    RECORDINGS(R.string.nav_recordings, Icons.Filled.FiberManualRecord),
 }
 
 private val RAIL_COLLAPSED = 76.dp
@@ -104,13 +100,12 @@ fun MainScreen(
     onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProfiles: () -> Unit,
-    onPlayRecording: (Recording) -> Unit,
     onPlayCatchup: (mediaKey: String, url: String, title: String, ua: String) -> Unit,
     activeProfileName: String,
 ) {
     // Content-type toggles: a switched-off type has its tab hidden here (and its sync skipped in
-    // CatalogRepository). Recordings is never a content type, so it always stays — which also means
-    // there is always at least one tab and never a blank shell, even with all three types off.
+    // CatalogRepository). With all three off there would be no tab and a blank shell, so Live TV
+    // stays as the fallback.
     val context = LocalContext.current
     val settings = remember { AppSettings.get(context) }
     val liveEnabled by settings.liveEnabled.collectAsState()
@@ -121,11 +116,13 @@ fun MainScreen(
             if (liveEnabled) add(Tab.LIVE)
             if (moviesEnabled) add(Tab.MOVIES)
             if (seriesEnabled) add(Tab.SHOWS)
-            add(Tab.RECORDINGS)
+            // All three switched off would leave no tab at all, so fall back to Live TV rather than
+            // handing `first()` below an empty list.
+            if (isEmpty()) add(Tab.LIVE)
         }
     }
     // The default/home tab is the first visible one — Live TV normally, otherwise the first type
-    // still switched on (or Recordings if none are).
+    // still switched on.
     val homeTab = visibleTabs.first()
 
     // Saveable, so coming back from a movie or show lands on the tab it was opened from.
@@ -203,7 +200,6 @@ fun MainScreen(
                     hasSources = hasSources,
                     isSyncing = isSyncing,
                 )
-                Tab.RECORDINGS -> RecordingsScreen(onPlay = onPlayRecording)
             }
         }
       }

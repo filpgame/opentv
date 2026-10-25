@@ -40,7 +40,7 @@ formatter is configured beyond `kotlin.code.style=official`. Releases are cut by
 
 `docs/ARCHITECTURE.md` covers the founding decisions: no backend, the EPG that never deletes before it
 has a replacement, UTC-only times, and the SQLite bound-variable workarounds. It predates Stalker, VOD
-from playlists, recording and sync. The current shape:
+from playlists and sync. The current shape:
 
 - **`core/ServiceLocator`**: the whole dependency graph in one file (no Hilt, deliberately).
   - Screens get `ServiceLocator.get(app)` in `AndroidViewModel`s, almost all in `ui/OpenTvViewModels.kt`.
@@ -85,12 +85,9 @@ from playlists, recording and sync. The current shape:
     matcher result (`Channel.epgCandidates`). The UI uses the first id that has programmes.
 - **Background work**: `data/work/SyncWorker` refreshes the catalogue and guide every 6 hours
   (WorkManager); `refreshNow` runs a one-shot refresh.
-  - Recording (`recording/`): `RecordingEngine` hands the capture to a foreground `RecordingService`.
-    `RecordingStorage` abstracts internal storage, SMB NAS (`smb://`) and USB via SAF
-    (`content://`). Series rules scan the guide for future airings.
-  - Reminders use exact alarms, re-armed on every launch in `OpenTvApp`.
   - Sync (`sync/`): `SyncEngine` is the single mapping between tables and the portable `SyncBundle`.
-    Positions are newest-wins; curation is applied additively.
+    Positions are newest-wins; curation is applied additively. `NasSync` swaps bundles through a
+    folder on the user's own SMB share (`SmbClient`, connection stored in `AppSettings.smb*`).
 - **Playback**: `PlayerController` owns one ExoPlayer per screen and swaps media items.
   - Channel switches are debounced and `stop()` the player instead of releasing it, so fast zapping
     costs one tune.
@@ -98,7 +95,7 @@ from playlists, recording and sync. The current shape:
   - `PlaybackErrors` turns failures into sentences that tell the user what to do.
 - **UI**: a single activity with a Navigation-Compose graph (`Routes` in `MainActivity.kt`).
   - `MainScreen` is a nav rail plus tabs: `HomeScreen` (live guide), `MoviesScreen`/`SeriesScreen`
-    (`ui/vod/`), and Recordings.
+    (`ui/vod/`).
   - The activity is edge-to-edge. The players apply their own insets; `MainScreen` pads by
     `safeDrawing`.
   - Self-update (`update/UpdateChecker`) polls GitHub releases of `REPO_SLUG` (`opentvproject/opentv`).

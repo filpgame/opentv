@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- **Recording is gone.** The DVR is removed from the app: recording to the box, a USB drive or a NAS,
+  scheduled recordings, series rules, the Recordings tab and the recording settings, along with the
+  battery-optimisation prompt that existed only for it.
+- **Programme reminders are gone too.** "Remind me" and "Auto-switch" are removed from the guide,
+  with the alarms, notifications and the permissions they needed (exact alarms, boot, full-screen
+  intent, notifications).
+- **NAS sync is set up under Settings → Sync → NAS.** The SMB connection (server, share, folder,
+  login, Test connection) used to live in the recording settings; it now sits right in the NAS
+  sync pane, and the phone web manager keeps a matching NAS card. Sync no longer carries recordings.
+- **Pause & rewind live TV moved to Settings → Display & playback.** Same switch, no longer tucked under
+  recording.
+- **Existing data.** The database drops the recordings, series rules and reminders tables on
+  upgrade; everything else is kept. Files already recorded to the box, a USB drive or a NAS are not
+  touched and stay where they are.
+- **Fix.** Switching Live TV, Movies and Shows all off no longer leaves the app with no tab; Live TV
+  stays as the fallback.
+
 ## 0.11.8
 
 - **Edit a saved provider.** Settings → Providers now has an **Edit** button on each provider, so you

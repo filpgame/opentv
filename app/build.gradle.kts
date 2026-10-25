@@ -138,14 +138,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.datastore.preferences)
-    // Storage Access Framework helpers - write recordings to a plugged-in USB / external
-    // drive via a user-granted tree URI, with no storage permission.
-    implementation(libs.androidx.documentfile)
     implementation(libs.coil.compose)
     implementation(libs.zxing.core)
 
-    // SMB/CIFS client for recording to a NAS (Synology etc.) and playing those recordings
-    // back in-app over the network. Pure-Java SMB2/3, no native bits.
+    // SMB/CIFS client for NAS sync (Synology etc.): each device drops its bundle on the share.
+    // Pure-Java SMB2/3, no native bits.
     implementation("com.hierynomus:smbj:0.12.2")
 
     testImplementation(libs.junit)

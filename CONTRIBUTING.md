@@ -81,7 +81,8 @@ that outlive the PR:
 
 - **Anything requiring a server we have to run.** See `docs/ARCHITECTURE.md`. The short version:
   a hosting bill that grows with users is how this category of app dies.
-- **Recording and catch-up.** Wanted, but large. Worth agreeing the shape first.
+- **Recording and programme reminders.** Both were removed from the app on purpose. Talk to the
+  maintainers before proposing either back.
 - **Replacing the hand-rolled Xtream JSON parsing with typed models.** There is a specific
   reason it is written that way; read the class docs before proposing it.
 

@@ -9,27 +9,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Scheduled recordings: an exact alarm starts a booked capture at broadcast time, and the
-         boot receiver re-arms future bookings after a power cycle. -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-
-    <!-- Lets OpenTV ask the user to be exempted from battery optimisation ("Doze"). Without the
-         exemption Android TV / Fire TV freeze the app during standby and kill an in-progress or
-         scheduled recording — this is what lets a capture keep running with the box asleep, the
-         same as a set-top box. The user still grants it through the system dialog. -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-
-    <!-- An "auto-switch" reminder uses a full-screen intent so a TV box changes channel on its own
-         when the programme starts, the same mechanism an alarm clock uses. Degrades to a heads-up
-         notification where the OS declines it. -->
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!--
       Lets the app install the update APK it downloads itself. Sideloaded builds get no
@@ -95,34 +76,6 @@
             android:name="androidx.media3.session.MediaSessionService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-
-        <!--
-          Keeps a recording running when the user leaves the player or the screen sleeps.
-          Typed mediaPlayback (not dataSync) so long captures aren't cut off by Android 14's
-          six-hour daily dataSync cap — recording live TV is a media task.
-        -->
-        <service
-            android:name=".recording.RecordingService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
-
-        <!-- Starts a booked recording when its alarm fires; re-arms bookings after a reboot. -->
-        <receiver
-            android:name=".recording.RecordingAlarmReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Fires a programme reminder when its alarm goes off; re-arms reminders after a reboot. -->
-        <receiver
-            android:name=".reminders.ReminderAlarmReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
 
         <!-- Serves the downloaded update APK to the system installer via a content:// uri. -->
         <provider

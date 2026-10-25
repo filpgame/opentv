@@ -46,6 +46,9 @@ the EPG parsing.
 | 6 | **Parental controls / PIN lock** | all majors | Core family feature | Easy |
 | 7 | **External player hand-off** (VLC / MX Player) | all majors | Fixes problem-stream support burden | Easy |
 | 8 | **Multiple playlists / sources** at once | TiviMate (headline) | Assumed baseline | Medium |
+
+*Update: Recording / DVR (3) and programme reminders (5) were built and later removed from
+OpenTV, so they are no longer planned. The analysis is kept as it was written.*
 | 9 | **In-player audio / subtitle picker** | all majors | Expected for multilingual providers | Easy |
 | 10 | **Sleep timer** | TiviMate, OTT Navigator | "Small but missed" | Easy |
 | 11 | **Aspect-ratio / zoom controls** | all majors | SD-on-16:9 complaint | Easy |
@@ -88,8 +91,6 @@ zapping, per-channel catch-up offset (trivial once #1 ships), a stream health/co
 **Deferred on purpose:** full N-up multiview and *server-backed* cross-device sync are both
 Hard (concurrent decoders / a backend we deliberately don't run) and shouldn't jump the queue.
 Note this is distinct from the **local** LAN sync below, which needs no backend and is planned.
-Recording/DVR is the natural sixth, since it shares the stream-to-disk plumbing with the
-timeshift buffer.
 
 ## Local sync without a backend
 

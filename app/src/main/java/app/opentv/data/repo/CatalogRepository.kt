@@ -952,20 +952,6 @@ class CatalogRepository(
     }
 
     /**
-     * The record menu's "record from which provider" options: one channel per source that carries
-     * this logical channel, each that source's best-quality copy, the current source first. With two
-     * providers this lets a recording run on one account while the user keeps watching on the other —
-     * the only real way around a provider's single-connection limit (which even TiviMate can't dodge).
-     */
-    suspend fun recordSourceOptions(channel: Channel): List<Channel> = withContext(Dispatchers.IO) {
-        if (channel.groupKey.isEmpty()) return@withContext listOf(channel)
-        channelDao.variantsInGroup(channel.groupKey)
-            .groupBy { it.sourceId }
-            .map { (_, chans) -> chans.maxByOrNull { it.qualityRank } ?: chans.first() }
-            .sortedByDescending { it.sourceId == channel.sourceId }
-    }
-
-    /**
      * Switches an Xtream source's live-stream container (HLS ↔ MPEG-TS) and rewrites its live
      * channels' playback URLs in place, so the change takes effect immediately without a re-sync.
      *
