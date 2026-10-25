@@ -265,6 +265,10 @@ private fun TmdbKeySection(settings: AppSettings) {
  * The UI languages OpenTV ships translations for, each labelled with its own endonym. The tag is
  * both the stored language tag and the resource qualifier (values-<tag>), so adding a language is
  * just a new `values-xx/strings.xml` plus a line here.
+ *
+ * Bare "pt" is Brazilian: values-pt holds it so that a device set to plain "Português" (no region,
+ * which Android never matches against a `-rBR` folder) gets it too. European Portuguese is the
+ * "pt-PT" tag, i.e. values-pt-rPT.
  */
 private val OpenTvLanguages: List<Pair<String, String>> = listOf(
     "en" to "English",
@@ -272,7 +276,8 @@ private val OpenTvLanguages: List<Pair<String, String>> = listOf(
     "fr" to "Français",
     "de" to "Deutsch",
     "it" to "Italiano",
-    "pt" to "Português",
+    "pt" to "Português (Brasil)",
+    "pt-PT" to "Português (Portugal)",
     "nl" to "Nederlands",
     "pl" to "Polski",
     "ru" to "Русский",
