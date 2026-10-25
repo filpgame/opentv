@@ -50,7 +50,7 @@ object AdultContent {
     }
 
     fun isAdultTitle(name: String): Boolean =
-        TITLE_TAG.containsMatchIn(name) || TITLE_PREFIX.containsMatchIn(name)
+        (('[' in name || '(' in name) && TITLE_TAG.containsMatchIn(name)) || TITLE_PREFIX.containsMatchIn(name)
 
     /** A title is hidden as adult when it says so itself or sits in an adult category. */
     fun isAdult(title: String, categoryName: String?): Boolean =

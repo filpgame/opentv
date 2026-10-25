@@ -35,6 +35,9 @@ import app.opentv.data.remote.TmdbClient
 import app.opentv.data.remote.XtreamApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -950,10 +953,10 @@ class CatalogRepository(
     }
 
     /** Movies with their search key, version key and flags, computed from name and category. */
-    private fun stampedMovies(movies: List<Movie>, categories: List<Category>): List<Movie> {
-        val names = categories.associate { it.id to it.name }
-        return movies.map { movie ->
-            val s = VodVersions.stamp(movie.name, movie.year, movie.categoryId?.let(names::get))
+    private suspend fun stampedMovies(movies: List<Movie>, categories: List<Category>): List<Movie> {
+        val traits = categories.associate { it.id to VodVersions.categoryTraits(it.name) }
+        return movies.mapAcrossCores { movie ->
+            val s = VodVersions.stamp(movie.name, movie.year, movie.categoryId?.let(traits::get) ?: NO_TRAITS)
             movie.copy(
                 searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
                 qualityRank = s.qualityRank, national = s.national, adult = s.adult,
@@ -961,10 +964,10 @@ class CatalogRepository(
         }
     }
 
-    private fun stampedSeries(series: List<Series>, categories: List<Category>): List<Series> {
-        val names = categories.associate { it.id to it.name }
-        return series.map { show ->
-            val s = VodVersions.stamp(show.name, show.year, show.categoryId?.let(names::get))
+    private suspend fun stampedSeries(series: List<Series>, categories: List<Category>): List<Series> {
+        val traits = categories.associate { it.id to VodVersions.categoryTraits(it.name) }
+        return series.mapAcrossCores { show ->
+            val s = VodVersions.stamp(show.name, show.year, show.categoryId?.let(traits::get) ?: NO_TRAITS)
             show.copy(
                 searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
                 qualityRank = s.qualityRank, national = s.national, adult = s.adult,
@@ -979,12 +982,14 @@ class CatalogRepository(
      * [VOD_STAMP_VERSION] to trigger it.
      *
      * Paged by id with a narrow projection and written one page per transaction (see the scale notes
-     * in CLAUDE.md), and only rows whose stamp actually changed are written.
+     * in CLAUDE.md), and only rows whose stamp actually changed are written. On a car head unit the
+     * first run (52,000 titles, every row written) took about half a minute in the background.
      */
     suspend fun restampVod(): Int = withContext(Dispatchers.IO) {
+        val started = System.nanoTime()
         val changed = restamp(StreamKind.MOVIE, { after, n -> movieDao.stampsAfter(after, n) }, { movieDao.setStamps(it) }) +
             restamp(StreamKind.SERIES, { after, n -> seriesDao.stampsAfter(after, n) }, { seriesDao.setStamps(it) })
-        Log.i(TAG, "Re-stamped $changed movies and shows with the current version rules")
+        Log.i(TAG, "Re-stamped $changed movies and shows in ${(System.nanoTime() - started) / 1_000_000} ms")
         _vodRevision.value++
         changed
     }
@@ -994,24 +999,39 @@ class CatalogRepository(
         page: suspend (afterId: Long, limit: Int) -> List<VodStampRow>,
         write: suspend (List<VodStampRow>) -> Unit,
     ): Int {
-        val names = categoryDao.allByKind(kind).associate { (it.sourceId to it.id) to it.name }
+        val traits = categoryDao.allByKind(kind).associate { (it.sourceId to it.id) to VodVersions.categoryTraits(it.name) }
         var after = 0L
         var changed = 0
         while (true) {
             val rows = page(after, STAMP_PAGE)
             if (rows.isEmpty()) break
-            val updates = rows.mapNotNull { row ->
-                val s = VodVersions.stamp(row.name, row.year, row.categoryId?.let { names[row.sourceId to it] })
+            val updates = rows.mapAcrossCores { row ->
+                val s = VodVersions.stamp(row.name, row.year, row.categoryId?.let { traits[row.sourceId to it] } ?: NO_TRAITS)
                 row.copy(
                     searchKey = s.searchKey, variantKey = s.variantKey, subtitled = s.subtitled,
                     qualityRank = s.qualityRank, national = s.national, adult = s.adult,
                 ).takeIf { it != row }
-            }
+            }.filterNotNull()
             if (updates.isNotEmpty()) write(updates)
             changed += updates.size
             after = rows.last().id
         }
         return changed
+    }
+
+    /**
+     * [map] split over the CPU cores. Stamping is regex work, about 12 s for 50,000 titles on a car
+     * head unit when done on one core; the rules are pure, so the titles can be stamped in parallel.
+     */
+    private suspend fun <T, R> List<T>.mapAcrossCores(transform: (T) -> R): List<R> {
+        val cores = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        if (size < 64 || cores == 1) return map(transform)
+        return coroutineScope {
+            chunked((size + cores - 1) / cores)
+                .map { chunk -> async(Dispatchers.Default) { chunk.map(transform) } }
+                .awaitAll()
+                .flatten()
+        }
     }
 
     /** Best-effort category-id → name map for a set of channels. */
@@ -1085,6 +1105,9 @@ class CatalogRepository(
 
         /** Rows per page and per transaction for [restampVod]. */
         private const val STAMP_PAGE = 500
+
+        /** A title with no category (or one not on disk) gets nothing from it. */
+        private val NO_TRAITS = VodVersions.CategoryTraits()
 
         /**
          * Bump this whenever playlist import changes what lands where (live / movies / series), so

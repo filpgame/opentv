@@ -184,7 +184,8 @@ object VodTitleCleaner {
      */
     private fun stripTrailingCodes(input: String): String {
         var s = input.trim()
-        while (true) {
+        // The unanchored regex below tries every position; most titles end in neither bracket.
+        while (s.endsWith(')') || s.endsWith(']')) {
             val match = TRAILING_CODE_PAREN.find(s) ?: break
             if (match.groupValues[1].uppercase() !in LANG_CODES) break
             s = s.substring(0, match.range.first).trim()

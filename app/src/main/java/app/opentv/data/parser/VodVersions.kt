@@ -73,21 +73,65 @@ object VodVersions {
         val adult: Boolean,
     )
 
-    fun stamp(name: String, year: Int?, categoryName: String?): Stamp {
+    /**
+     * What a category's name says about every title filed under it. Computed once per category and
+     * reused for its titles: a playlist has ~40 categories and 50,000 titles, and re-reading the
+     * category for each title was most of the 35 s the first stamp took on a car head unit.
+     */
+    data class CategoryTraits(
+        val subtitled: Boolean = false,
+        val national: Boolean = false,
+        val adult: Boolean = false,
+        val qualityRank: Int = 0,
+    )
+
+    fun categoryTraits(name: String?): CategoryTraits {
+        if (name.isNullOrBlank()) return CategoryTraits()
+        val words = SearchText.normalize(name).split(' ')
+        return CategoryTraits(
+            subtitled = tagsOf(name).any { it in SUBTITLED_TAGS } || words.any { it in SUBTITLED_CATEGORY_WORDS },
+            national = words.any { it in NATIONAL_CATEGORY_WORDS },
+            adult = AdultContent.isAdultCategory(name),
+            qualityRank = qualityRankOf(name),
+        )
+    }
+
+    /**
+     * The best quality word in [text] (`4K`, `[4K]`, `1080p`), ranked like [ChannelNameNormalizer].
+     * A plain word scan rather than that normaliser, which also cleans the name with half a dozen
+     * regexes this does not need; on a car head unit that was a third of the time spent stamping.
+     */
+    private fun qualityRankOf(text: String): Int {
+        var best = 0
+        var start = -1
+        val folded = ChannelNameNormalizer.foldSuperscripts(text)
+        for (i in 0..folded.length) {
+            val inWord = i < folded.length && folded[i].isLetterOrDigit()
+            if (inWord && start < 0) start = i
+            if (!inWord && start >= 0) {
+                val rank = ChannelNameNormalizer.qualityRankOfToken(folded.substring(start, i)) ?: 0
+                if (rank > best) best = rank
+                start = -1
+            }
+        }
+        return best
+    }
+
+    fun stamp(name: String, year: Int?, categoryName: String?): Stamp = stamp(name, year, categoryTraits(categoryName))
+
+    fun stamp(name: String, year: Int?, category: CategoryTraits): Stamp {
         val title = VodTitleCleaner.clean(name)
-        val quality = ChannelNameNormalizer.normalize(name).qualityRank
-            .takeIf { it > 0 }
-            ?: categoryName?.let { ChannelNameNormalizer.normalize(it).qualityRank }
-            ?: 0
+        val tags = tagsOf(name).toSet()
+        val quality = qualityRankOf(name).takeIf { it > 0 } ?: category.qualityRank
         return Stamp(
             // The cleaned title first, so "starts with" ranks on the real title even when the raw name
             // opens with a language tag; the raw name after it, so tags like 4K are still searchable.
             searchKey = SearchText.keyOf(title, name),
             variantKey = variantKeyOf(title, year),
-            subtitled = isSubtitled(name, categoryName),
+            subtitled = category.subtitled || tags.any { it in SUBTITLED_TAGS },
             qualityRank = quality,
-            national = isNational(name, categoryName),
-            adult = AdultContent.isAdult(name, categoryName),
+            national = category.national || tags.any { it in NATIONAL_TAGS },
+            adult = category.adult || AdultContent.isAdultTitle(name),
         )
     }
 
@@ -98,8 +142,10 @@ object VodVersions {
      * without on the other stay apart.
      */
     fun variantKeyOf(cleanTitle: String, year: Int?): String {
-        val embedded = YEAR.find(cleanTitle)?.value?.toIntOrNull()
-        val words = SearchText.normalize(AMPERSAND.replace(YEAR.replace(cleanTitle, " "), " e "))
+        val hasDigits = cleanTitle.any { it.isDigit() }
+        val embedded = if (hasDigits) YEAR.find(cleanTitle)?.value?.toIntOrNull() else null
+        val withoutYear = if (hasDigits) YEAR.replace(cleanTitle, " ") else cleanTitle
+        val words = SearchText.normalize(if ('&' in withoutYear) AMPERSAND.replace(withoutYear, " e ") else withoutYear)
             .split(' ')
             .filter { it.isNotEmpty() }
             .map { if (it == "and") "e" else it }
@@ -110,18 +156,13 @@ object VodVersions {
 
     /** [name] with every version tag removed; used by [VodTitleCleaner] for the displayed title. */
     fun stripVersionTags(name: String): String =
-        TAG.replace(name) { match -> if (tagOf(match) in VERSION_TAGS) " " else match.value }
+        if (!hasTag(name)) name else TAG.replace(name) { match -> if (tagOf(match) in VERSION_TAGS) " " else match.value }
 
     fun isSubtitled(name: String, categoryName: String?): Boolean =
-        tagsOf(name).any { it in SUBTITLED_TAGS } ||
-            (categoryName != null && (
-                tagsOf(categoryName).any { it in SUBTITLED_TAGS } ||
-                    SearchText.normalize(categoryName).split(' ').any { it in SUBTITLED_CATEGORY_WORDS }
-                ))
+        categoryTraits(categoryName).subtitled || tagsOf(name).any { it in SUBTITLED_TAGS }
 
     fun isNational(name: String, categoryName: String?): Boolean =
-        tagsOf(name).any { it in NATIONAL_TAGS } ||
-            (categoryName != null && SearchText.normalize(categoryName).split(' ').any { it in NATIONAL_CATEGORY_WORDS })
+        categoryTraits(categoryName).national || tagsOf(name).any { it in NATIONAL_TAGS }
 
     /**
      * What the name says about this copy besides its language, as the provider wrote it, for the
@@ -159,5 +200,9 @@ object VodVersions {
     private fun tagOf(match: MatchResult): String =
         SearchText.normalize(match.groupValues[1].ifEmpty { match.groupValues[2] })
 
-    private fun tagsOf(text: String): Sequence<String> = TAG.findAll(text).map { tagOf(it) }
+    private fun tagsOf(text: String): Sequence<String> =
+        if (!hasTag(text)) emptySequence() else TAG.findAll(text).map { tagOf(it) }
+
+    /** Cheap pre-check before the tag regex, which most titles (no brackets at all) never need. */
+    private fun hasTag(text: String): Boolean = '[' in text || '(' in text
 }
