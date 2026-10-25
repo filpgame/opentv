@@ -5,12 +5,12 @@
  */
 package app.opentv.sync
 
+import android.content.Context
 import android.util.Log
+import app.opentv.pairing.LanAddress
 import app.opentv.pairing.PairingHttp
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.InetAddress
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.SecureRandom
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * server on the LAN, gated by a six-digit code shown on screen, private-network only, and torn
  * down on a timeout. The bundle is a snapshot taken when sharing starts, served as-is.
  */
-class SyncServer(private val scope: CoroutineScope) {
+class SyncServer(private val scope: CoroutineScope, private val context: Context) {
 
     data class Session(val host: String, val port: Int, val code: String) {
         val address: String get() = "$host:$port"
@@ -54,7 +54,7 @@ class SyncServer(private val scope: CoroutineScope) {
 
     fun start(bundleJson: String) {
         if (running) return
-        val host = lanAddress() ?: run {
+        val host = LanAddress.find(context) ?: run {
             _state.value = State.Failed("This device isn't on a network, so it can't share.")
             return
         }
@@ -140,24 +140,6 @@ class SyncServer(private val scope: CoroutineScope) {
             return
         }
         output.write(PairingHttp.httpResponse("200 OK", "application/json", bundle))
-    }
-
-    private fun lanAddress(): String? {
-        val candidates = mutableListOf<InetAddress>()
-        runCatching {
-            for (nic in NetworkInterface.getNetworkInterfaces()) {
-                if (!nic.isUp || nic.isLoopback) continue
-                for (address in nic.inetAddresses) {
-                    if (address.isLoopbackAddress) continue
-                    if (address.hostAddress?.contains(':') == true) continue // IPv4 only
-                    if (PairingHttp.isPrivateAddress(address.hostAddress)) candidates += address
-                }
-            }
-        }
-        return candidates
-            .sortedBy { it.hostAddress?.startsWith("169.254") == true }
-            .firstOrNull()
-            ?.hostAddress
     }
 
     private companion object {

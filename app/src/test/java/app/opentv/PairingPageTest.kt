@@ -57,6 +57,17 @@ class PairingPageTest {
     }
 
     @Test
+    fun `the form offers Stalker with a MAC field and its own label and hint`() {
+        val html = PairingPage.form("tok", null, text("en"))
+
+        assertThat(html).contains("value=\"stalker\"")
+        assertThat(html).contains("name=\"mac\"")
+        assertThat(html).contains("data-stalker=\"${english(R.string.onboarding_portal_url)}\"")
+        assertThat(html).contains("data-stalker=\"${english(R.string.onboarding_portal_help)}\"")
+        assertThat(html).contains(english(R.string.onboarding_mac_help))
+    }
+
+    @Test
     fun `an error message is escaped, not injected as markup`() {
         val html = PairingPage.form("tok", "<script>alert(1)</script> & \"x\"", text("en"))
 

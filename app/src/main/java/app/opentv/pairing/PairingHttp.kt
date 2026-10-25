@@ -5,6 +5,8 @@
  */
 package app.opentv.pairing
 
+import app.opentv.data.model.Source
+import app.opentv.data.model.SourceKind
 import java.net.URLDecoder
 
 /**
@@ -111,6 +113,48 @@ object PairingHttp {
             numbers[0] == 100 && numbers[1] in 64..127 -> true
             else -> false
         }
+    }
+
+    sealed interface FormResult {
+        data class Ok(val source: Source) : FormResult
+        data object MissingUrl : FormResult
+        data object MissingMac : FormResult
+    }
+
+    /**
+     * Turns what the phone submitted into a [Source].
+     *
+     * Only the fields that belong to the chosen type are kept: the page hides the others but still
+     * posts them, so a login typed under Xtream and then abandoned for an M3U link must not leak
+     * into the saved playlist. The page's `required` attributes are client-side only, so what the
+     * server cannot do without (the address, and the MAC for Stalker) is checked again here.
+     * Default names are passed in because they are shown on this device, in its language, not in
+     * the phone's.
+     */
+    fun sourceFromForm(form: Map<String, String>, providerName: String, playlistName: String): FormResult {
+        val kind = when (form["kind"]) {
+            "m3u" -> SourceKind.M3U
+            "stalker" -> SourceKind.STALKER
+            else -> SourceKind.XTREAM
+        }
+        val url = form["url"].orEmpty().trim()
+        if (url.isEmpty()) return FormResult.MissingUrl
+        val mac = form["mac"]?.trim()?.takeIf { it.isNotEmpty() }
+        if (kind == SourceKind.STALKER && mac == null) return FormResult.MissingMac
+
+        return FormResult.Ok(
+            Source(
+                name = form["name"].orEmpty().trim().ifBlank {
+                    if (kind == SourceKind.M3U) playlistName else providerName
+                },
+                kind = kind,
+                url = url,
+                username = form["username"]?.trim()?.takeIf { it.isNotEmpty() && kind == SourceKind.XTREAM },
+                password = form["password"]?.takeIf { it.isNotEmpty() && kind == SourceKind.XTREAM },
+                macAddress = mac.takeIf { kind == SourceKind.STALKER },
+                epgUrl = form["epg"]?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+        )
     }
 
     fun httpResponse(
