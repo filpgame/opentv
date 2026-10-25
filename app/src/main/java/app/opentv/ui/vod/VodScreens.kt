@@ -9,13 +9,16 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,8 +47,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -60,14 +68,18 @@ import app.opentv.data.model.Series
 import app.opentv.data.model.Source
 import app.opentv.data.parser.displayTitle
 import app.opentv.data.repo.MovieVariantGroup
+import app.opentv.ui.CategoryRailEntry
+import app.opentv.ui.CategoryRailPanel
 import app.opentv.ui.VodViewModel
+import app.opentv.ui.rememberCollapsibleRailState
 import coil.compose.AsyncImage
 
 /**
  * Movies: a modern, row-based home — Continue Watching, Recommended, Recently added and a row per
- * genre, each a horizontally-scrolling shelf of poster cards. A category chip strip along the top
- * keeps whole-category browsing one press away without a permanent rail eating the width. Clicking
- * a film opens its detail page rather than playing straight away, the streaming-app convention.
+ * genre, each a horizontally-scrolling shelf of poster cards. The category rail down the left (the
+ * same one Live TV has) keeps whole-category browsing one press away and slides shut once focus is on
+ * the posters. Clicking a film opens its detail page rather than playing straight away, the
+ * streaming-app convention.
  */
 @Composable
 fun MoviesScreen(
@@ -99,54 +111,44 @@ fun MoviesScreen(
     var browseCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
     // The view model reads the category; the screen only says which one. Keying on the saved value
-    // (rather than calling from the chip's click) also re-issues the read after a restore, when the
+    // (rather than calling from the rail's click) also re-issues the read after a restore, when the
     // view model is fresh but the screen still remembers a category.
     LaunchedEffect(browseCategory) { viewModel.selectMovieCategory(browseCategory) }
 
     val hasContent = resume.isNotEmpty() || recommended.isNotEmpty() ||
         recentlyAdded.isNotEmpty() || genreRows.isNotEmpty()
 
-    Column(Modifier.fillMaxSize()) {
-        SearchAffordance(onOpenSearch)
-        if (sources.size > 1) {
-            ProviderChips(
-                sources = sources,
-                selected = selectedSource,
-                onSelectAll = { browseCategory = null; viewModel.selectVodSource(null) },
-                onSelectSource = { id -> browseCategory = null; viewModel.selectVodSource(id) },
-            )
-        }
-        CategoryChips(
-            entries = categories.map { it.id to it.name },
-            selected = browseCategory,
-            onSelectHome = { browseCategory = null },
-            onSelectCategory = { id -> browseCategory = id },
-        )
-        // Weighted so the shelves fill the space under the fixed search + chips header, exactly and
-        // unambiguously — the same reason Live TV weights its guide grid.
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                browseCategory != null -> MovieCategoryGrid(movieBrowse, browseCategory, onOpenMovie)
-                !hasContent -> when {
-                    vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_movies))
-                    hasSources -> EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_no_movies_provider))
-                    else -> EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_no_movies_add))
+    VodWithRail(
+        title = stringResource(R.string.nav_movies),
+        sources = sources,
+        selectedSource = selectedSource,
+        onSelectSource = { id -> browseCategory = null; viewModel.selectVodSource(id) },
+        categories = categories.map { it.id to it.name },
+        selected = browseCategory,
+        onSelect = { id -> browseCategory = id },
+        onOpenSearch = onOpenSearch,
+    ) {
+        when {
+            browseCategory != null -> MovieCategoryGrid(movieBrowse, browseCategory, onOpenMovie)
+            !hasContent -> when {
+                vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_movies))
+                hasSources -> EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_no_movies_provider))
+                else -> EmptyVod(stringResource(R.string.vod_no_movies), stringResource(R.string.vod_no_movies_add))
+            }
+            else -> LazyColumn(
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (resume.isNotEmpty()) item(key = "cw") { ContinueWatchingRow(resume, onResume) }
+                if (recommended.isNotEmpty()) item(key = "rec") {
+                    MoviePosterRow(stringResource(R.string.vod_recommended), recommended, onOpenMovie)
                 }
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    if (resume.isNotEmpty()) item(key = "cw") { ContinueWatchingRow(resume, onResume) }
-                    if (recommended.isNotEmpty()) item(key = "rec") {
-                        MoviePosterRow(stringResource(R.string.vod_recommended), recommended, onOpenMovie)
-                    }
-                    if (recentlyAdded.isNotEmpty()) item(key = "recent") {
-                        MoviePosterRow(stringResource(R.string.vod_recently_added), recentlyAdded, onOpenMovie)
-                    }
-                    items(genreRows, key = { "g:${it.genre}" }) { group ->
-                        MoviePosterRow(group.genre, group.items, onOpenMovie)
-                    }
+                if (recentlyAdded.isNotEmpty()) item(key = "recent") {
+                    MoviePosterRow(stringResource(R.string.vod_recently_added), recentlyAdded, onOpenMovie)
+                }
+                items(genreRows, key = { "g:${it.genre}" }) { group ->
+                    MoviePosterRow(group.genre, group.items, onOpenMovie)
                 }
             }
         }
@@ -155,7 +157,7 @@ fun MoviesScreen(
 
 /**
  * Shows: the same row-based home as Movies (Continue Watching, Recently added, genre rows) with the
- * category chip strip for whole-category browsing. A show opens its detail page — where episodes are
+ * category rail for whole-category browsing. A show opens its detail page — where episodes are
  * fetched on demand, since pulling every episode of every series up front is what makes a first sync
  * take forever.
  */
@@ -188,42 +190,34 @@ fun SeriesScreen(
 
     val hasContent = resume.isNotEmpty() || recentlyAdded.isNotEmpty() || genreRows.isNotEmpty()
 
-    Column(Modifier.fillMaxSize()) {
-        SearchAffordance(onOpenSearch)
-        if (sources.size > 1) {
-            ProviderChips(
-                sources = sources,
-                selected = selectedSource,
-                onSelectAll = { browseCategory = null; viewModel.selectVodSource(null) },
-                onSelectSource = { id -> browseCategory = null; viewModel.selectVodSource(id) },
-            )
-        }
-        CategoryChips(
-            entries = categories.map { it.id to it.name },
-            selected = browseCategory,
-            onSelectHome = { browseCategory = null },
-            onSelectCategory = { id -> browseCategory = id },
-        )
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                browseCategory != null -> SeriesCategoryGrid(seriesBrowse, browseCategory, onOpenSeries)
-                !hasContent -> when {
-                    vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_shows))
-                    hasSources -> EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_no_shows_provider))
-                    else -> EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_no_shows_add))
+    VodWithRail(
+        title = stringResource(R.string.nav_shows),
+        sources = sources,
+        selectedSource = selectedSource,
+        onSelectSource = { id -> browseCategory = null; viewModel.selectVodSource(id) },
+        categories = categories.map { it.id to it.name },
+        selected = browseCategory,
+        onSelect = { id -> browseCategory = id },
+        onOpenSearch = onOpenSearch,
+    ) {
+        when {
+            browseCategory != null -> SeriesCategoryGrid(seriesBrowse, browseCategory, onOpenSeries)
+            !hasContent -> when {
+                vodLoading || isSyncing -> LoadingVod(stringResource(R.string.vod_loading_shows))
+                hasSources -> EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_no_shows_provider))
+                else -> EmptyVod(stringResource(R.string.vod_no_shows), stringResource(R.string.vod_no_shows_add))
+            }
+            else -> LazyColumn(
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (resume.isNotEmpty()) item(key = "cw") { ContinueWatchingRow(resume, onResume) }
+                if (recentlyAdded.isNotEmpty()) item(key = "recent") {
+                    SeriesPosterRow(stringResource(R.string.vod_recently_added), recentlyAdded, onOpenSeries)
                 }
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    if (resume.isNotEmpty()) item(key = "cw") { ContinueWatchingRow(resume, onResume) }
-                    if (recentlyAdded.isNotEmpty()) item(key = "recent") {
-                        SeriesPosterRow(stringResource(R.string.vod_recently_added), recentlyAdded, onOpenSeries)
-                    }
-                    items(genreRows, key = { "g:${it.genre}" }) { group ->
-                        SeriesPosterRow(group.genre, group.items, onOpenSeries)
-                    }
+                items(genreRows, key = { "g:${it.genre}" }) { group ->
+                    SeriesPosterRow(group.genre, group.items, onOpenSeries)
                 }
             }
         }
@@ -543,98 +537,100 @@ private fun ResumeCard(item: VodViewModel.ResumeItem, onClick: () -> Unit) {
     }
 }
 
-// ---- Category chips ----------------------------------------------------------------------------
+// ---- Category rail -----------------------------------------------------------------------------
 
 /**
- * A horizontal chip strip along the top of the home: an "All" chip returns to the curated rows, and
- * each following chip opens that category's full grid. Keeps whole-category browsing reachable on a
- * d-pad without a permanent side rail taking the width.
+ * The Movies/Shows layout: the same vertical category rail as Live TV on the left, the search entry
+ * and [content] on the right. A rail rather than a chip strip for the same reason as Live — provider
+ * category lists run to dozens of entries, and on a d-pad anything you cannot see you cannot reach.
+ * "All" returns to the curated rows; each category opens its full grid.
+ *
+ * The rail slides shut once focus enters the content, and d-pad LEFT from the content's leftmost
+ * element slides it back onto the selected category. That is done on the content container as a
+ * whole, so the posters and shelves need no focus callbacks of their own.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun CategoryChips(
-    entries: List<Pair<String, String>>,
-    selected: String?,
-    onSelectHome: () -> Unit,
-    onSelectCategory: (String) -> Unit,
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        item(key = "label") {
-            Text(
-                stringResource(R.string.vod_categories),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 4.dp),
-            )
-        }
-        item(key = "all") { Chip(stringResource(R.string.vod_all), selected == null, onSelectHome) }
-        items(entries, key = { it.first }) { (id, name) ->
-            Chip(name, selected == id) { onSelectCategory(id) }
-        }
-    }
-}
-
-/**
- * A provider filter above the category chips, shown only when more than one source is configured —
- * pick a provider to browse just its Movies/Shows categories, or "All sources" to fold them.
- */
-@Composable
-private fun ProviderChips(
+private fun VodWithRail(
+    title: String,
     sources: List<Source>,
-    selected: Long?,
-    onSelectAll: () -> Unit,
-    onSelectSource: (Long) -> Unit,
+    selectedSource: Long?,
+    onSelectSource: (Long?) -> Unit,
+    categories: List<Pair<String, String>>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    onOpenSearch: () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        item(key = "plabel") {
-            Text(
-                stringResource(R.string.channels_manager_source_header),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 4.dp),
-            )
+    val rail = rememberCollapsibleRailState()
+    Row(Modifier.fillMaxSize()) {
+        CategoryRailPanel(title, rail) {
+            // Provider switch — only when there's more than one source: browse just that provider's
+            // categories, or "All sources" to fold them.
+            if (sources.size > 1) {
+                item(key = "provider-header") {
+                    Text(
+                        stringResource(R.string.channels_manager_source_header),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                item(key = "provider-all") {
+                    CategoryRailEntry(
+                        label = stringResource(R.string.channels_manager_all_sources),
+                        selected = selectedSource == null,
+                        onClick = { onSelectSource(null) },
+                    )
+                }
+                items(sources, key = { "src-${it.id}" }) { source ->
+                    CategoryRailEntry(
+                        label = source.name,
+                        selected = selectedSource == source.id,
+                        onClick = { onSelectSource(source.id) },
+                    )
+                }
+                item(key = "provider-divider") { Spacer(Modifier.height(10.dp)) }
+            }
+            // The selected entry carries the rail's FocusRequester, so reopening the rail lands
+            // focus straight back on the current category.
+            item(key = "all") {
+                CategoryRailEntry(
+                    label = stringResource(R.string.vod_all),
+                    selected = selected == null,
+                    onClick = { onSelect(null) },
+                    modifier = if (selected == null) Modifier.focusRequester(rail.focusRequester) else Modifier,
+                )
+            }
+            items(categories, key = { it.first }) { (id, name) ->
+                CategoryRailEntry(
+                    label = name,
+                    selected = selected == id,
+                    onClick = { onSelect(id) },
+                    modifier = if (selected == id) Modifier.focusRequester(rail.focusRequester) else Modifier,
+                )
+            }
         }
-        item(key = "pall") {
-            Chip(stringResource(R.string.channels_manager_all_sources), selected == null, onSelectAll)
-        }
-        items(sources, key = { it.id }) { source ->
-            Chip(source.name, selected == source.id) { onSelectSource(source.id) }
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                // Order matters: each of these applies to the focus group that follows it.
+                .onFocusChanged { if (it.hasFocus) rail.onContentFocused() }
+                .focusProperties {
+                    exit = { direction ->
+                        if (direction == FocusDirection.Left && rail.reopen()) FocusRequester.Cancel
+                        else FocusRequester.Default
+                    }
+                }
+                .focusGroup(),
+        ) {
+            SearchAffordance(onOpenSearch)
+            // Weighted so the shelves fill the space under the fixed search header, exactly and
+            // unambiguously — the same reason Live TV weights its guide grid.
+            Box(Modifier.weight(1f).fillMaxWidth(), content = content)
         }
     }
-}
-
-@Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val bg = when {
-        focused -> MaterialTheme.colorScheme.primary
-        selected -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    val fg = when {
-        focused -> MaterialTheme.colorScheme.onPrimary
-        selected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Text(
-        label,
-        style = MaterialTheme.typography.labelLarge,
-        color = fg,
-        maxLines = 1,
-        modifier = Modifier
-            .onFocusChanged { focused = it.isFocused }
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
 }
 
 // ---- Search / loading / empty ------------------------------------------------------------------

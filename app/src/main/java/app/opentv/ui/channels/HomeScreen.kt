@@ -5,16 +5,13 @@
  */
 package app.opentv.ui.channels
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,8 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -78,7 +72,10 @@ import app.opentv.data.model.Programme
 import app.opentv.data.model.shownName
 import app.opentv.player.PlaybackQueue
 import app.opentv.player.PlayerController
+import app.opentv.ui.CategoryRailEntry
+import app.opentv.ui.CategoryRailPanel
 import app.opentv.ui.ChannelsViewModel
+import app.opentv.ui.rememberCollapsibleRailState
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -146,28 +143,9 @@ fun HomeScreen(
     // The channel whose OK menu (Watch / Open with…) is open.
     var channelMenu by remember { mutableStateOf<ChannelsViewModel.Row?>(null) }
 
-    // ---- Category rail collapse (Change 2) ---------------------------------------------------
-    // The rail is full-width while focus is on it, then slides shut once focus moves into the
-    // guide (onFocusRow) so the grid gets the whole width. Pressing d-pad LEFT from the guide's
-    // leftmost (channel) column slides it back and drops focus on the selected category.
-    var railExpanded by remember { mutableStateOf(true) }
-    val railWidth by animateDpAsState(
-        targetValue = if (railExpanded) 240.dp else 0.dp,
-        label = "railWidth",
-    )
-    val railFocusRequester = remember { FocusRequester() }
-    // Set when LEFT reopens the rail; the effect waits for the rail to be laid out again before
-    // moving focus onto it — a just-revealed node isn't focusable on the very same frame.
-    var pendingRailFocus by remember { mutableStateOf(false) }
-    LaunchedEffect(pendingRailFocus) {
-        if (pendingRailFocus) {
-            delay(50)
-            // runCatching: if the selected category is scrolled out of the rail's list it may not
-            // be composed; a second LEFT press then still reaches the rail by ordinary navigation.
-            runCatching { railFocusRequester.requestFocus() }
-            pendingRailFocus = false
-        }
-    }
+    // Collapses once focus moves into the guide (onFocusRow) so the grid gets the whole width;
+    // d-pad LEFT from the guide's leftmost (channel) column slides it back. Shared with Movies/Shows.
+    val rail = rememberCollapsibleRailState()
 
     // Re-evaluate "now" once a minute so progress bars advance without leaving the screen.
     LaunchedEffect(Unit) {
@@ -269,83 +247,62 @@ fun HomeScreen(
     Row(Modifier.fillMaxSize()) {
 
         // ---- Category rail -----------------------------------------------------------------
-        // Width animates to 0 while focus is in the guide (see onFocusRow) so the grid gets the
-        // whole screen; d-pad LEFT from the guide's channel column slides it back (onExitLeft…).
-        Column(
-            Modifier
-                .width(railWidth)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.surface)
-                .clipToBounds()
-                .padding(vertical = 16.dp),
-        ) {
-            Text(
-                stringResource(R.string.nav_live_tv),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(horizontal = 20.dp),
-            )
-            Spacer(Modifier.height(12.dp))
-            // The top "Search channels" bar was removed — Search now lives in the global nav rail.
-
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                // Provider switch — only when there's more than one source. Lets the user keep
-                // several playlists and flip between them (cardiodoc's request); "All" folds them.
-                if (sources.size > 1) {
-                    item(key = "provider-header") {
-                        Text(
-                            stringResource(R.string.channels_manager_source_header),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                    }
-                    item(key = "provider-all") {
-                        RailEntry(
-                            label = stringResource(R.string.channels_manager_all_sources),
-                            selected = selectedSource == null,
-                            onClick = { viewModel.selectSource(null) },
-                        )
-                    }
-                    items(sources, key = { "src-${it.id}" }) { source ->
-                        RailEntry(
-                            label = source.name,
-                            selected = selectedSource == source.id,
-                            onClick = { viewModel.selectSource(source.id) },
-                        )
-                    }
-                    item(key = "provider-divider") { Spacer(Modifier.height(10.dp)) }
-                }
-                // The currently-selected entry carries the rail's FocusRequester, so reopening the
-                // rail (d-pad LEFT in the guide) lands focus straight back on the current category.
-                item {
-                    RailEntry(
-                        label = stringResource(R.string.guide_favourites),
-                        selected = favouritesOnly,
-                        onClick = viewModel::selectFavourites,
-                        modifier = if (favouritesOnly) Modifier.focusRequester(railFocusRequester) else Modifier,
+        // The top "Search channels" bar was removed — Search now lives in the global nav rail.
+        CategoryRailPanel(stringResource(R.string.nav_live_tv), rail) {
+            // Provider switch — only when there's more than one source. Lets the user keep
+            // several playlists and flip between them (cardiodoc's request); "All" folds them.
+            if (sources.size > 1) {
+                item(key = "provider-header") {
+                    Text(
+                        stringResource(R.string.channels_manager_source_header),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
-                item {
-                    val allSelected = !favouritesOnly && selectedCategory == null
-                    RailEntry(
-                        label = stringResource(R.string.guide_all_channels),
-                        selected = allSelected,
-                        onClick = { viewModel.selectCategory(null) },
-                        modifier = if (allSelected) Modifier.focusRequester(railFocusRequester) else Modifier,
+                item(key = "provider-all") {
+                    CategoryRailEntry(
+                        label = stringResource(R.string.channels_manager_all_sources),
+                        selected = selectedSource == null,
+                        onClick = { viewModel.selectSource(null) },
                     )
                 }
-                items(categories, key = { it.key }) { group ->
-                    val groupSelected = !favouritesOnly && selectedCategory == group.key
-                    RailEntry(
-                        label = group.label,
-                        selected = groupSelected,
-                        onClick = { viewModel.selectCategory(group.key) },
-                        modifier = if (groupSelected) Modifier.focusRequester(railFocusRequester) else Modifier,
+                items(sources, key = { "src-${it.id}" }) { source ->
+                    CategoryRailEntry(
+                        label = source.name,
+                        selected = selectedSource == source.id,
+                        onClick = { viewModel.selectSource(source.id) },
                     )
                 }
+                item(key = "provider-divider") { Spacer(Modifier.height(10.dp)) }
+            }
+            // The currently-selected entry carries the rail's FocusRequester, so reopening the
+            // rail (d-pad LEFT in the guide) lands focus straight back on the current category.
+            item {
+                CategoryRailEntry(
+                    label = stringResource(R.string.guide_favourites),
+                    selected = favouritesOnly,
+                    onClick = viewModel::selectFavourites,
+                    modifier = if (favouritesOnly) Modifier.focusRequester(rail.focusRequester) else Modifier,
+                )
+            }
+            item {
+                val allSelected = !favouritesOnly && selectedCategory == null
+                CategoryRailEntry(
+                    label = stringResource(R.string.guide_all_channels),
+                    selected = allSelected,
+                    onClick = { viewModel.selectCategory(null) },
+                    modifier = if (allSelected) Modifier.focusRequester(rail.focusRequester) else Modifier,
+                )
+            }
+            items(categories, key = { it.key }) { group ->
+                val groupSelected = !favouritesOnly && selectedCategory == group.key
+                CategoryRailEntry(
+                    label = group.label,
+                    selected = groupSelected,
+                    onClick = { viewModel.selectCategory(group.key) },
+                    modifier = if (groupSelected) Modifier.focusRequester(rail.focusRequester) else Modifier,
+                )
             }
         }
 
@@ -392,17 +349,9 @@ fun HomeScreen(
                 // from the leftmost element reopens the rail (consumed only when it was hidden).
                 val onFocusChannel: (ChannelsViewModel.Row) -> Unit = {
                     highlightedRow = it
-                    railExpanded = false
+                    rail.onContentFocused()
                 }
-                val onExitLeftChannel: () -> Boolean = {
-                    if (!railExpanded) {
-                        railExpanded = true
-                        pendingRailFocus = true
-                        true
-                    } else {
-                        false
-                    }
-                }
+                val onExitLeftChannel: () -> Boolean = rail::reopen
                 if (channelLayout == AppSettings.ChannelLayout.LIST) {
                     ChannelList(
                         rows = rows,
@@ -583,28 +532,6 @@ private fun ActionRow(label: String, primary: Boolean = false, onClick: () -> Un
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-    )
-}
-
-@Composable
-private fun RailEntry(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (selected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surface,
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
     )
 }
 
